@@ -4,6 +4,14 @@
 
 ProgramMic is a lightweight Windows audio-routing utility for Discord, games, voice chat, and similar applications. Select a running application's audio, mix it with your microphone, and send the combined audio through a virtual microphone destination.
 
+## Download
+
+### [Download ProgramMic v1.0.0 for Windows](https://github.com/TPavZ/ProgramMic/releases/download/v1.0.0/ProgramMic-Setup-v1.0.0.exe)
+
+Windows 10/11 x64 · Self-contained installer · VB-CABLE required
+
+[View the v1.0.0 release notes](https://github.com/TPavZ/ProgramMic/releases/tag/v1.0.0)
+
 ## Version
 
 Current release: **v1.0.0**
@@ -22,13 +30,12 @@ Current release: **v1.0.0**
 
 ## Installation
 
-1. Open the **Releases** section of this repository.
-2. Download **`ProgramMic-Setup-v1.0.0.exe`** from the latest release.
-3. Run the installer.
-4. ProgramMic requires **VB-CABLE** from VB-Audio. Setup automatically checks whether it is installed.
-5. If VB-CABLE is missing, click **Download VB-CABLE** in Setup, install the driver, and restart Windows if requested.
-6. Return to ProgramMic Setup and click **Recheck**.
-7. Once VB-CABLE is detected, continue the installation and launch ProgramMic.
+1. Download **`ProgramMic-Setup-v1.0.0.exe`** using the link above.
+2. Run the installer.
+3. ProgramMic requires **VB-CABLE** from VB-Audio. Setup automatically checks whether it is installed.
+4. If VB-CABLE is missing, click **Download VB-CABLE** in Setup, install the driver, and restart Windows if requested.
+5. Return to ProgramMic Setup and click **Recheck**.
+6. Once VB-CABLE is detected, continue the installation and launch ProgramMic.
 
 Official VB-CABLE download: https://vb-audio.com/Cable/
 
