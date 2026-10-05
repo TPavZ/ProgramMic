@@ -6,7 +6,7 @@ ProgramMic is a lightweight Windows audio-routing utility for Discord, games, vo
 
 ## Download
 
-### [Download ProgramMic v1.0.0 for Windows](https://github.com/TPavZ/ProgramMic/releases/download/v1.0.0/ProgramMic-Setup-v1.0.0.exe)
+### TBD
 
 Windows 10/11 x64 · Self-contained installer · VB-CABLE required
 
