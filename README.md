@@ -4,17 +4,11 @@
 
 ProgramMic is a lightweight Windows audio-routing utility for Discord, games, voice chat, and similar applications. Select a running application's audio, mix it with your microphone, and send the combined audio through a virtual microphone destination.
 
-## Download
-
-### TBD
-
-Windows 10/11 x64 · Self-contained installer · VB-CABLE required
-
-[View the v1.0.0 release notes](https://github.com/TPavZ/ProgramMic/releases/tag/v1.0.0)
-
 ## Version
 
 Current release: **v1.0.0**
+
+[View the v1.0.0 release notes](https://github.com/TPavZ/ProgramMic/releases/tag/v1.0.0)
 
 ## Features
 
