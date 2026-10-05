@@ -30,7 +30,7 @@ Current release: **v1.0.0**
 
 ## Installation
 
-1. Download **`ProgramMic-Setup-v1.0.0.exe`** using the link above.
+1. Download TBD using the link above.
 2. Run the installer.
 3. ProgramMic requires **VB-CABLE** from VB-Audio. Setup automatically checks whether it is installed.
 4. If VB-CABLE is missing, click **Download VB-CABLE** in Setup, install the driver, and restart Windows if requested.
