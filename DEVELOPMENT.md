@@ -13,6 +13,8 @@ The first UI pass preserves the dark gray and pink palette, with separate app an
 
 ## Build and run
 
+Run `Start-Live.cmd` for a local development window. It sets `PROGRAMMIC_DEV_UI` to the source `UI/` folder. Saved HTML, CSS and JavaScript edits reload after a short debounce without restarting the C# mixer; current state is resent after navigation. The window title shows the last detected update. Normal launches use the bundled UI without watching files. C# changes require closing the development window and running the launcher again.
+
 Requires the .NET 9 SDK, Windows 10 build 19041 or newer, Microsoft Edge WebView2 Runtime, and VB-CABLE for audio routing.
 
 ```powershell

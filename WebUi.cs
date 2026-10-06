@@ -9,6 +9,32 @@ public sealed partial class MainForm
     private WebView2? webUi;
     private bool webBusy, micMuted;
     private readonly System.Windows.Forms.Timer webStateTimer = new() { Interval = 250 };
+    private string? devUiFolder;
+    private string devUiStamp = "";
+    private DateTime devUiChangedAt;
+    private bool devUiReloadPending;
+
+    private string GetUiStamp() => string.Join("|", Directory.EnumerateFiles(devUiFolder!, "*", SearchOption.AllDirectories)
+        .Where(p => Path.GetExtension(p) is ".css" or ".html" or ".js")
+        .OrderBy(p => p).Select(p => p + File.GetLastWriteTimeUtc(p).Ticks + new FileInfo(p).Length.ToString()));
+
+    private void RefreshDevUi()
+    {
+        if (devUiFolder is null || closing) return;
+        try
+        {
+            var stamp = GetUiStamp();
+            if (stamp != devUiStamp) { devUiStamp = stamp; devUiChangedAt = DateTime.UtcNow; devUiReloadPending = true; }
+            if (devUiReloadPending && DateTime.UtcNow - devUiChangedAt > TimeSpan.FromMilliseconds(500))
+            {
+                devUiReloadPending = false;
+                webUi?.CoreWebView2.Reload();
+                Text = "ProgramMic v2 — Live development — UI updated " + DateTime.Now.ToLongTimeString();
+            }
+        }
+        catch (IOException) { /* Editors may briefly lock files while saving. Retry next tick. */ }
+        catch (UnauthorizedAccessException) { }
+    }
 
     private async Task InitializeWebUiAsync()
     {
@@ -20,7 +46,14 @@ public sealed partial class MainForm
             await webUi.EnsureCoreWebView2Async(environment);
             if (closing) return;
             var core = webUi.CoreWebView2;
-            core.SetVirtualHostNameToFolderMapping("programmic.local", Path.Combine(AppContext.BaseDirectory, "UI"), CoreWebView2HostResourceAccessKind.DenyCors);
+            var requestedUi = Environment.GetEnvironmentVariable("PROGRAMMIC_DEV_UI");
+            if (!string.IsNullOrWhiteSpace(requestedUi) && File.Exists(Path.Combine(requestedUi, "index.html")))
+            {
+                devUiFolder = Path.GetFullPath(requestedUi);
+                devUiStamp = GetUiStamp();
+                Text = "ProgramMic v2 — Live development";
+            }
+            core.SetVirtualHostNameToFolderMapping("programmic.local", devUiFolder ?? Path.Combine(AppContext.BaseDirectory, "UI"), CoreWebView2HostResourceAccessKind.DenyCors);
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.AreDevToolsEnabled = false;
             core.NewWindowRequested += (_, e) => e.Handled = true;
@@ -33,7 +66,7 @@ public sealed partial class MainForm
             ClientSize = new Size(1000, 740);
             MinimumSize = new Size(720, 680);
             core.Navigate("https://programmic.local/index.html");
-            webStateTimer.Tick += (_, _) => PublishWebState();
+            webStateTimer.Tick += (_, _) => { PublishWebState(); RefreshDevUi(); };
             webStateTimer.Start();
             FormClosed += (_, _) => { webStateTimer.Stop(); webStateTimer.Dispose(); };
         }
