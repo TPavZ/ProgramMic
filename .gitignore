@@ -1,0 +1,17 @@
+# Build and publish output
+[Bb]in/
+[Oo]bj/
+publish/
+Installer/Output/
+
+# IDE and local settings
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Compiled binaries and installer packages
+*.exe
+*.dll
+*.pdb
+*.msi
