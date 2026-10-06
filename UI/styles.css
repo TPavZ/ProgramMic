@@ -2,4 +2,4 @@
 
 .mix-actions{display:flex;gap:14px;margin-top:18px}.mix-actions button{flex:1}@media(max-width:520px){.mix-actions{flex-direction:column}}
 
-header .eyebrow{margin-top:7px}
+header .eyebrow{margin-top:3px}
