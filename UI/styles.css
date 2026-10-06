@@ -3,3 +3,5 @@
 .mix-actions{display:flex;gap:14px;margin-top:18px}.mix-actions button{flex:1}@media(max-width:520px){.mix-actions{flex-direction:column}}
 
 header h1{line-height:1}header .eyebrow{margin-top:4px}
+
+.brand{display:flex;align-items:center;gap:12px}.brand-icon{width:52px;height:52px;object-fit:contain;flex-shrink:0}
