@@ -707,28 +707,7 @@ Controls.Add(root);
     {
         if(assigningHotkey)
         {
-            // Strip modifier flags and use the actual first key pressed.
-            Keys key=keyData & Keys.KeyCode;
-
-            // Ignore modifier-only presses; wait for the first real key.
-            if(key==Keys.ControlKey || key==Keys.ShiftKey || key==Keys.Menu ||
-               key==Keys.LWin || key==Keys.RWin || key==Keys.None)
-                return true;
-
-            hotkeyKey=key;
-            assigningHotkey=false;
-
-            hotkeyLabel.Text=hotkeyKey.ToString();
-            hotkeyLabel.ForeColor=TextSecondary;
-            setHotkeyButton.Text="ASSIGN HOTKEY";
-            toggleButton.Enabled=true;
-
-            RegisterCurrentHotkey(true);
-            UpdateToggleUi();
-            SaveSettings();
-
-            // Consume the assignment keystroke so it does not also activate a
-            // focused control or immediately toggle Program Audio.
+            CompleteHotkeySelection(keyData & Keys.KeyCode);
             return true;
         }
 

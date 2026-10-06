@@ -7,7 +7,7 @@ The first UI pass preserves the dark gray and pink palette, with separate app an
 ## First additions
 
 - Microphone mute/unmute without changing saved microphone volume. Mute resets when the app closes.
-- Function-key hotkey selection (F1–F24), with rollback if Windows cannot register a key.
+- Click Assign hotkey, then press the next non-modifier key, matching v1. The previous key is restored if Windows rejects the selection. Switching away cancels assignment.
 - Clear routing status, responsive layout and keyboard focus indicators.
 - Fix device selection restart: the previous restart path returned early while holding its own restart flag.
 

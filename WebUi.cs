@@ -59,6 +59,13 @@ public sealed partial class MainForm
             core.NewWindowRequested += (_, e) => e.Handled = true;
             core.NavigationStarting += (_, e) => e.Cancel = e.Uri != "https://programmic.local/index.html";
             core.WebMessageReceived += HandleWebCommand;
+            Deactivate += (_, _) =>
+            {
+                if (!assigningHotkey) return;
+                assigningHotkey = false;
+                RegisterCurrentHotkey(false);
+                PublishWebState();
+            };
             core.NavigationCompleted += (_, e) => { if (e.IsSuccess) PublishWebState(); };
             foreach (Control control in Controls) control.Visible = false;
             Controls.Add(webUi);
@@ -85,7 +92,7 @@ public sealed partial class MainForm
         object[] Options(ComboBox box) => box.Items.Cast<object>().Select((item, index) => (object)new { value = index, label = item.ToString() }).ToArray();
         webUi.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
         {
-            type = "state", running, programEnabled, micMuted, busy = webBusy,
+            type = "state", running, programEnabled, micMuted, assigningHotkey, busy = webBusy,
             status = statusLabel.Text, hotkey = HotkeyText(),
             processes = Options(processBox), microphones = Options(micBox), outputs = Options(outputBox),
             process = processBox.SelectedIndex, microphone = micBox.SelectedIndex, output = outputBox.SelectedIndex,
@@ -139,19 +146,31 @@ public sealed partial class MainForm
                     micMuted = !micMuted;
                     UpdateGains();
                     break;
-                case "hotkey":
-                    int key = root.GetProperty("value").GetInt32();
-                    if (key < (int)Keys.F1 || key > (int)Keys.F24) break;
-                    var oldKey = hotkeyKey;
-                    var oldMods = hotkeyMods;
-                    UnregisterHotKey(Handle, HOTKEY_ID);
-                    hotkeyKey = (Keys)key; hotkeyMods = Mods.None;
-                    if (!RegisterCurrentHotkey(true)) { hotkeyKey = oldKey; hotkeyMods = oldMods; RegisterCurrentHotkey(false); }
-                    hotkeyLabel.Text = HotkeyText(); SaveSettings(); UpdateToggleUi();
+                case "assignHotkey":
+                    BeginAssignHotkey();
                     break;
             }
         }
         catch (Exception ex) { MessageBox.Show("Could not apply that change.\n\n" + ex.Message, "ProgramMic"); }
         finally { webBusy = false; PublishWebState(); }
+    }
+
+    private void CompleteHotkeySelection(Keys key)
+    {
+        if (!assigningHotkey || key is Keys.None or Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin) return;
+        var oldKey = hotkeyKey;
+        var oldMods = hotkeyMods;
+        hotkeyKey = key;
+        hotkeyMods = Mods.None;
+        assigningHotkey = false;
+        if (!RegisterCurrentHotkey(true))
+        {
+            hotkeyKey = oldKey; hotkeyMods = oldMods; RegisterCurrentHotkey(false);
+        }
+        hotkeyLabel.Text = HotkeyText();
+        hotkeyLabel.ForeColor = TextSecondary;
+        setHotkeyButton.Text = "ASSIGN HOTKEY";
+        toggleButton.Enabled = true;
+        UpdateToggleUi(); SaveSettings(); PublishWebState();
     }
 }
