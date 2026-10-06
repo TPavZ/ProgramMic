@@ -1,5 +1,5 @@
 #define MyAppName "ProgramMic"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "2.0.0-dev"
 #define MyAppPublisher "tpavz"
 #define MyAppExeName "ProgramMic.exe"
 #define VBCableUrl "https://vb-audio.com/Cable/"
@@ -25,9 +25,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 RestartApplications=no
-VersionInfoVersion=1.0.0.0
+VersionInfoVersion=2.0.0.0
 VersionInfoProductName=ProgramMic
-VersionInfoProductVersion=1.0.0
+VersionInfoProductVersion=2.0.0-dev
 VersionInfoCompany=tpavz
 
 [Files]

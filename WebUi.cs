@@ -1,0 +1,124 @@
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
+using System.Text.Json;
+
+namespace ProgramMic;
+
+public sealed partial class MainForm
+{
+    private WebView2? webUi;
+    private bool webBusy, micMuted;
+    private readonly System.Windows.Forms.Timer webStateTimer = new() { Interval = 250 };
+
+    private async Task InitializeWebUiAsync()
+    {
+        webUi = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Bg };
+        try
+        {
+            var environment = await CoreWebView2Environment.CreateAsync(userDataFolder:
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ProgramMic", "WebView2"));
+            await webUi.EnsureCoreWebView2Async(environment);
+            if (closing) return;
+            var core = webUi.CoreWebView2;
+            core.SetVirtualHostNameToFolderMapping("programmic.local", Path.Combine(AppContext.BaseDirectory, "UI"), CoreWebView2HostResourceAccessKind.DenyCors);
+            core.Settings.AreDefaultContextMenusEnabled = false;
+            core.Settings.AreDevToolsEnabled = false;
+            core.NewWindowRequested += (_, e) => e.Handled = true;
+            core.NavigationStarting += (_, e) => e.Cancel = e.Uri != "https://programmic.local/index.html";
+            core.WebMessageReceived += HandleWebCommand;
+            core.NavigationCompleted += (_, e) => { if (e.IsSuccess) PublishWebState(); };
+            foreach (Control control in Controls) control.Visible = false;
+            Controls.Add(webUi);
+            webUi.BringToFront();
+            ClientSize = new Size(1000, 740);
+            MinimumSize = new Size(720, 680);
+            core.Navigate("https://programmic.local/index.html");
+            webStateTimer.Tick += (_, _) => PublishWebState();
+            webStateTimer.Start();
+            FormClosed += (_, _) => { webStateTimer.Stop(); webStateTimer.Dispose(); };
+        }
+        catch (Exception ex)
+        {
+            webUi.Dispose();
+            webUi = null;
+            MessageBox.Show("The new interface could not start. The classic interface is available.\n\nCheck that Microsoft Edge WebView2 Runtime is installed.\n\n" + ex.Message, "ProgramMic v2");
+            foreach (Control control in Controls) control.Visible = true;
+        }
+    }
+
+    private void PublishWebState()
+    {
+        if (closing || webUi?.CoreWebView2 is null) return;
+        object[] Options(ComboBox box) => box.Items.Cast<object>().Select((item, index) => (object)new { value = index, label = item.ToString() }).ToArray();
+        webUi.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+        {
+            type = "state", running, programEnabled, micMuted, busy = webBusy,
+            status = statusLabel.Text, hotkey = HotkeyText(),
+            processes = Options(processBox), microphones = Options(micBox), outputs = Options(outputBox),
+            process = processBox.SelectedIndex, microphone = micBox.SelectedIndex, output = outputBox.SelectedIndex,
+            programVolume = programVolume.Value, micVolume = micVolume.Value, masterVolume = masterVolume.Value
+        }));
+    }
+
+    private async void HandleWebCommand(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        if (closing || webBusy || e.Source != "https://programmic.local/index.html") return;
+        try
+        {
+            using var doc = JsonDocument.Parse(e.WebMessageAsJson);
+            var root = doc.RootElement;
+            var command = root.GetProperty("command").GetString();
+            webBusy = true;
+            switch (command)
+            {
+                case "ready": break;
+                case "toggle":
+                    await EnsureEngineRunningAsync();
+                    if (running) ToggleProgram();
+                    break;
+                case "refresh":
+                    restartingEngine = true;
+                    try { StopEngine(); LoadDevices(); LoadProcesses(); }
+                    finally { restartingEngine = false; }
+                    await EnsureEngineRunningAsync();
+                    break;
+                case "select":
+                    var target = root.GetProperty("target").GetString();
+                    ComboBox? box = target switch { "process" => processBox, "microphone" => micBox, "output" => outputBox, _ => null };
+                    int index = root.GetProperty("value").GetInt32();
+                    if (box is null || index < 0 || index >= box.Items.Count) break;
+                    // Hold restart ownership while changing selection to avoid overlapping async event handlers.
+                    restartingEngine = true;
+                    try { StopEngine(); box.SelectedIndex = index; }
+                    finally { restartingEngine = false; }
+                    await EnsureEngineRunningAsync();
+                    break;
+                case "volume":
+                    int value = root.GetProperty("value").GetInt32();
+                    var slider = root.GetProperty("target").GetString() switch { "program" => programVolume, "microphone" => micVolume, "output" => masterVolume, _ => null };
+                    if (slider is not null)
+                    {
+                        slider.Value = Math.Clamp(value, slider.Minimum, slider.Maximum);
+                        if (slider == micVolume) { micMuted = false; UpdateGains(); }
+                    }
+                    break;
+                case "muteMic":
+                    micMuted = !micMuted;
+                    UpdateGains();
+                    break;
+                case "hotkey":
+                    int key = root.GetProperty("value").GetInt32();
+                    if (key < (int)Keys.F1 || key > (int)Keys.F24) break;
+                    var oldKey = hotkeyKey;
+                    var oldMods = hotkeyMods;
+                    UnregisterHotKey(Handle, HOTKEY_ID);
+                    hotkeyKey = (Keys)key; hotkeyMods = Mods.None;
+                    if (!RegisterCurrentHotkey(true)) { hotkeyKey = oldKey; hotkeyMods = oldMods; RegisterCurrentHotkey(false); }
+                    hotkeyLabel.Text = HotkeyText(); SaveSettings(); UpdateToggleUi();
+                    break;
+            }
+        }
+        catch (Exception ex) { MessageBox.Show("Could not apply that change.\n\n" + ex.Message, "ProgramMic"); }
+        finally { webBusy = false; PublishWebState(); }
+    }
+}

@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace ProgramMic;
 
-public sealed class MainForm : Form
+public sealed partial class MainForm : Form
 {
     static readonly Color Bg=Color.FromArgb(18,18,22), Panel=Color.FromArgb(27,27,33), Field=Color.FromArgb(37,37,45), Border=Color.FromArgb(62,62,72), TextPrimary=Color.FromArgb(245,245,247), TextSecondary=Color.FromArgb(160,160,172), Pink=Color.FromArgb(255,79,154), PinkBright=Color.FromArgb(255,107,171);
     private readonly ComboBox processBox=new(), micBox=new(), outputBox=new();
@@ -28,7 +28,7 @@ public sealed class MainForm : Form
     private Keys hotkeyKey=Keys.F8;
     private Mods hotkeyMods=Mods.None;
 
-    private const string AppVersion="v1.0.0";
+    private const string AppVersion="v2.0.0-dev";
 
     private static readonly string SettingsDirectory=
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"ProgramMic");
@@ -366,6 +366,7 @@ Controls.Add(root);
 
         Shown+=async(_,_)=>{RegisterCurrentHotkey(false);await EnsureEngineRunningAsync();};
         FormClosing+=(_,_)=>{SaveSettings();closing=true;refreshTimer.Stop();StopEngine();UnregisterHotKey(Handle,HOTKEY_ID);};
+        Shown+=async(_,_)=>await InitializeWebUiAsync();
     }
 
     private Control CreateAudioSection(string heading, ComboBox combo, Label volumeLabel, PinkSlider slider, bool withRefresh)
@@ -621,7 +622,7 @@ Controls.Add(root);
         {
             if (running) StopEngine();
             await Task.Delay(75);
-            await EnsureEngineRunningAsync();
+            await StartEngineAsync();
         }
         finally { restartingEngine=false; }
     }
@@ -654,7 +655,7 @@ Controls.Add(root);
     private void Stopped(object? sender,StoppedEventArgs e){if(e.Exception==null||closing)return;try{BeginInvoke(()=>{if(running){MessageBox.Show("Audio capture stopped:\r\n\r\n"+e.Exception.Message);StopEngine();}});}catch{}}
 
     private void ToggleProgram(){if(!running)return;programEnabled=!programEnabled;programBuffer?.ClearBuffer();UpdateGains();UpdateToggleUi();}
-    private void UpdateGains(){if(mixer==null)return;mixer.MicGain=micVolume.Value/100f;mixer.ProgramGain=programEnabled?programVolume.Value/100f:0f;mixer.MasterGain=masterVolume.Value/100f;}
+    private void UpdateGains(){if(mixer==null)return;mixer.MicGain=micMuted?0f:micVolume.Value/100f;mixer.ProgramGain=programEnabled?programVolume.Value/100f:0f;mixer.MasterGain=masterVolume.Value/100f;}
     private void UpdateUi(string proc)
     {
         // The audio engine now stays live so the regular microphone can remain routed
