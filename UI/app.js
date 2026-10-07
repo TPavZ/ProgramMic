@@ -102,6 +102,11 @@ function updateTrim(){
  $('trimHighlight').setAttribute('x',x);$('trimHighlight').setAttribute('width',w);
  $('trimStartLine').setAttribute('x1',x);$('trimStartLine').setAttribute('x2',x);
  $('trimEndLine').setAttribute('x1',x+w);$('trimEndLine').setAttribute('x2',x+w);
+ for(const [id,value] of [['trimStartHandle',start],['trimEndHandle',end]]){
+  const handle=$(id);handle.style.left=`${uploadDuration?value/uploadDuration*100:0}%`;
+  handle.setAttribute('aria-valuemin',0);handle.setAttribute('aria-valuemax',uploadDuration);
+  handle.setAttribute('aria-valuenow',value);handle.setAttribute('aria-valuetext',`${value.toFixed(2)} seconds`);
+ }
 }
 function updateSoundUpload(busy=uploadBusy){
  uploadBusy=busy;
@@ -129,14 +134,26 @@ $('soundUpload').addEventListener('cancel',e=>{e.preventDefault();if(!uploadBusy
 $('uploadBrowse').addEventListener('click',()=>{updateSoundUpload(true);send('soundBrowse');});
 $('uploadName').addEventListener('input',()=>updateSoundUpload());
 $('uploadVolume').addEventListener('input',()=>$('uploadVolumeValue').value=`${$('uploadVolume').value}%`);
-for(const id of ['uploadStart','uploadEnd']){
- $(id).addEventListener('input',()=>{
-  const gap=Math.min(.01,uploadDuration),{start,end}=trimSelection();
-  if(id==='uploadStart'&&start>=end)$('uploadStart').value=Math.max(0,end-gap);
-  if(id==='uploadEnd'&&end<=start)$('uploadEnd').value=Math.min(uploadDuration,start+gap);
-  updateTrim();updateSoundUpload();
+function moveTrimHandle(id,value){
+ const gap=Math.min(.01,uploadDuration),{start,end}=trimSelection();
+ $(id).value=id==='uploadStart'?Math.max(0,Math.min(value,end-gap)):Math.min(uploadDuration,Math.max(value,start+gap));
+ updateTrim();updateSoundUpload();
+}
+for(const [handleId,id] of [['trimStartHandle','uploadStart'],['trimEndHandle','uploadEnd']]){
+ const handle=$(handleId);let dragging=false;
+ const move=e=>{const bounds=$('waveTrack').getBoundingClientRect();if(bounds.width)moveTrimHandle(id,(e.clientX-bounds.left)/bounds.width*uploadDuration);};
+ handle.addEventListener('pointerdown',e=>{if(e.button!==0||uploadBusy)return;e.preventDefault();handle.focus();dragging=true;handle.setPointerCapture(e.pointerId);send('soundPreviewStop');});
+ handle.addEventListener('pointermove',e=>{if(dragging)move(e);});
+ for(const event of ['pointerup','pointercancel','lostpointercapture'])handle.addEventListener(event,()=>{dragging=false;});
+ handle.addEventListener('keydown',e=>{
+  if(uploadBusy)return;const step=e.shiftKey ? .1 : .01;let value=Number($(id).value);
+  if(e.key==='ArrowLeft'||e.key==='ArrowDown')value-=step;
+  else if(e.key==='ArrowRight'||e.key==='ArrowUp')value+=step;
+  else if(e.key==='Home')value=0;
+  else if(e.key==='End')value=uploadDuration;
+  else return;
+  e.preventDefault();send('soundPreviewStop');moveTrimHandle(id,value);
  });
- $(id).addEventListener('change',()=>send('soundPreviewStop'));
 }
 $('uploadPreviewPlay').addEventListener('click',()=>send(previewPlaying?'soundPreviewStop':'soundPreview',{...trimSelection(),value:Number($('uploadVolume').value)}));
 $('uploadForm').addEventListener('submit',e=>{e.preventDefault();if($('uploadSave').disabled)return;updateSoundUpload(true);send('soundImport',{...uploadTarget,...trimSelection(),name:$('uploadName').value.trim(),value:Number($('uploadVolume').value)});});
