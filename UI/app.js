@@ -115,6 +115,7 @@ function trimSelection(){return {start:Number($('uploadStart').value),end:Number
 function updateTrim(){
  const {start,end}=trimSelection();
  $('uploadLength').textContent=`${(end-start).toFixed(2)}s selected`;
+ $('uploadLength').classList.toggle('over-limit',end-start>35.0000001);
  $('uploadTrimError').hidden=end-start<=35.0000001;
  const x=uploadDuration?start/uploadDuration*400:0,w=uploadDuration?(end-start)/uploadDuration*400:400;
  $('trimHighlight').setAttribute('x',x);$('trimHighlight').setAttribute('width',w);
