@@ -364,8 +364,8 @@ Controls.Add(root);
         refreshTimer.Tick+=(_,_)=>{ };
         refreshTimer.Start();
 
-        Shown+=async(_,_)=>{RegisterCurrentHotkey(false);await EnsureEngineRunningAsync();};
-        FormClosing+=(_,_)=>{SaveSettings();closing=true;refreshTimer.Stop();StopEngine();UnregisterHotKey(Handle,HOTKEY_ID);};
+        Shown+=async(_,_)=>{RegisterCurrentHotkey(false);RegisterMicHotkey(false);await EnsureEngineRunningAsync();};
+        FormClosing+=(_,_)=>{SaveSettings();closing=true;refreshTimer.Stop();StopEngine();UnregisterHotKey(Handle,HOTKEY_ID);UnregisterHotKey(Handle,MIC_HOTKEY_ID);};
         Shown+=async(_,_)=>await InitializeWebUiAsync();
     }
 
@@ -516,6 +516,7 @@ Controls.Add(root);
             if(Enum.IsDefined(typeof(Keys),settings.HotkeyKey))
                 hotkeyKey=(Keys)settings.HotkeyKey;
 
+            if(Enum.IsDefined(typeof(Keys),settings.MicHotkeyKey)) micHotkeyKey=(Keys)settings.MicHotkeyKey;
             hotkeyMods=(Mods)(settings.HotkeyModifiers & 0x000F);
             hotkeyLabel.Text=HotkeyText();
             UpdateToggleUi();
@@ -546,6 +547,7 @@ Controls.Add(root);
                 ProgramVolume=programVolume.Value,
                 MicVolume=micVolume.Value,
                 OutputVolume=masterVolume.Value,
+                MicHotkeyKey=(int)micHotkeyKey,
                 HotkeyKey=(int)hotkeyKey,
                 HotkeyModifiers=(uint)(hotkeyMods & ~Mods.NoRepeat)
             };
@@ -705,6 +707,11 @@ Controls.Add(root);
     private bool RegisterCurrentHotkey(bool showError){if(!IsHandleCreated)return false;bool ok=RegisterHotKey(Handle,HOTKEY_ID,(uint)(hotkeyMods|Mods.NoRepeat),(uint)hotkeyKey);if(!ok&&showError)MessageBox.Show($"Windows could not register {HotkeyText()}. Another app may already use it.","ProgramMic Hotkey");return ok;}
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
+        if(assigningMicHotkey)
+        {
+            CompleteMicHotkeySelection(keyData & Keys.KeyCode);
+            return true;
+        }
         if(assigningHotkey)
         {
             CompleteHotkeySelection(keyData & Keys.KeyCode);
@@ -716,6 +723,7 @@ Controls.Add(root);
 
     protected override void WndProc(ref Message m)
     {
+        if(m.Msg==WM_HOTKEY && m.WParam.ToInt32()==MIC_HOTKEY_ID) { ToggleMicrophone(); return; }
         if(m.Msg==WM_HOTKEY && m.WParam.ToInt32()==HOTKEY_ID)
         {
             if(running) ToggleProgram();
@@ -755,6 +763,7 @@ Controls.Add(root);
         public int ProgramVolume{get;set;}=100;
         public int MicVolume{get;set;}=100;
         public int OutputVolume{get;set;}=100;
+        public int MicHotkeyKey{get;set;}
         public int HotkeyKey{get;set;}=(int)Keys.F8;
         public uint HotkeyModifiers{get;set;}
     }

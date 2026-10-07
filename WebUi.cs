@@ -8,6 +8,45 @@ public sealed partial class MainForm
 {
     private WebView2? webUi;
     private bool webBusy, micMuted;
+    private const int MIC_HOTKEY_ID = 0x504E;
+    private Keys micHotkeyKey = Keys.None;
+    private bool assigningMicHotkey;
+
+    private bool RegisterMicHotkey(bool showError)
+    {
+        if (micHotkeyKey == Keys.None) return true;
+        if (!IsHandleCreated) return false;
+        bool ok = RegisterHotKey(Handle, MIC_HOTKEY_ID, (uint)Mods.NoRepeat, (uint)micHotkeyKey);
+        if (!ok && showError) MessageBox.Show($"Windows could not register {micHotkeyKey}. Another action or app may already use it.", "Microphone Hotkey");
+        return ok;
+    }
+
+    private void CancelHotkeyAssignment()
+    {
+        if (assigningHotkey) { assigningHotkey = false; RegisterCurrentHotkey(false); }
+        if (assigningMicHotkey) { assigningMicHotkey = false; RegisterMicHotkey(false); }
+    }
+
+    private void BeginAssignMicHotkey()
+    {
+        CancelHotkeyAssignment();
+        UnregisterHotKey(Handle, MIC_HOTKEY_ID);
+        assigningMicHotkey = true;
+        ActiveControl = null;
+        Focus();
+    }
+
+    private void CompleteMicHotkeySelection(Keys key)
+    {
+        if (!assigningMicHotkey || key is Keys.None or Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin) return;
+        var oldKey = micHotkeyKey;
+        micHotkeyKey = key;
+        assigningMicHotkey = false;
+        if (!RegisterMicHotkey(true)) { micHotkeyKey = oldKey; RegisterMicHotkey(false); }
+        SaveSettings(); PublishWebState();
+    }
+
+    private void ToggleMicrophone() { micMuted = !micMuted; UpdateGains(); PublishWebState(); }
     private readonly System.Windows.Forms.Timer webStateTimer = new() { Interval = 250 };
     private string? devUiFolder;
     private string devUiStamp = "";
@@ -61,9 +100,7 @@ public sealed partial class MainForm
             core.WebMessageReceived += HandleWebCommand;
             Deactivate += (_, _) =>
             {
-                if (!assigningHotkey) return;
-                assigningHotkey = false;
-                RegisterCurrentHotkey(false);
+                CancelHotkeyAssignment();
                 PublishWebState();
             };
             core.NavigationCompleted += (_, e) => { if (e.IsSuccess) PublishWebState(); };
@@ -94,6 +131,7 @@ public sealed partial class MainForm
         {
             type = "state", running, programEnabled, micMuted, assigningHotkey, busy = webBusy,
             status = statusLabel.Text, hotkey = HotkeyText(),
+            assigningMicHotkey, micHotkey = micHotkeyKey == Keys.None ? "Not assigned" : micHotkeyKey.ToString(),
             processes = Options(processBox), microphones = Options(micBox), outputs = Options(outputBox),
             process = processBox.SelectedIndex, microphone = micBox.SelectedIndex, output = outputBox.SelectedIndex,
             programVolume = programVolume.Value, micVolume = micVolume.Value, masterVolume = masterVolume.Value
@@ -143,10 +181,13 @@ public sealed partial class MainForm
                     }
                     break;
                 case "muteMic":
-                    micMuted = !micMuted;
-                    UpdateGains();
+                    ToggleMicrophone();
+                    break;
+                case "assignMicHotkey":
+                    BeginAssignMicHotkey();
                     break;
                 case "assignHotkey":
+                    CancelHotkeyAssignment();
                     BeginAssignHotkey();
                     break;
             }

@@ -25,3 +25,5 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 .help-popup{width:360px}.help-popup strong{display:block;font-size:13px;color:var(--text)}.help-popup p{margin:10px 0 0;color:var(--text);font-size:12px;line-height:1.5}
 
 .activation-controls{flex:1;min-width:0}.activation-controls>#toggle{width:100%}.activation-controls>.hotkey{justify-content:center;margin-top:12px;flex-wrap:wrap}.activation-controls>.hotkey button{flex:none}.mix-actions{align-items:flex-start}
+
+.activation-controls>#muteMic{width:100%}
