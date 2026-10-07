@@ -367,6 +367,7 @@ Controls.Add(root);
         Shown+=async(_,_)=>{ValidateLoadedHotkeys();RegisterCurrentHotkey(false);RegisterMicHotkey(false);await EnsureEngineRunningAsync();};
         FormClosing+=(_,_)=>{SaveSettings();closing=true;refreshTimer.Stop();StopEngine();UnregisterHotKey(Handle,HOTKEY_ID);UnregisterHotKey(Handle,MIC_HOTKEY_ID);};
         Shown+=async(_,_)=>await InitializeWebUiAsync();
+        InitializeBackgroundMode();
     }
 
     private Control CreateAudioSection(string heading, ComboBox combo, Label volumeLabel, PinkSlider slider, bool withRefresh)

@@ -6,6 +6,9 @@ The first UI pass preserves the dark gray and pink palette, with separate app an
 
 ## First additions
 
+- Runs in the system tray when closed or minimized; double-click to reopen, or choose Exit ProgramMic to quit. Routing and hotkeys keep running while hidden.
+- Starts at Windows sign-in in tray mode through the current user's Run entry. Windows Task Manager's Startup apps can disable startup. Launching another copy reopens the existing instance. `ProgramMic.exe --exit` requests a graceful exit for development rebuilds.
+
 - Microphone mute/unmute without changing saved microphone volume. Mute resets when the app closes.
 - Click Assign hotkey, then press the next non-modifier key, matching v1. The previous key is restored if Windows rejects the selection. Switching away cancels assignment.
 - Clear routing status, responsive layout and keyboard focus indicators.

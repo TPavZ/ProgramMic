@@ -37,6 +37,9 @@ Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs cr
 Name: "{autoprograms}\ProgramMic"; Filename: "{app}\ProgramMic.exe"
 Name: "{autodesktop}\ProgramMic"; Filename: "{app}\ProgramMic.exe"; Tasks: desktopicon
 
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ProgramMic"; ValueData: """{app}\ProgramMic.exe"" --tray"; Flags: uninsdeletevalue
+
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
