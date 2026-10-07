@@ -51,3 +51,5 @@ After Browse, Add a Sound shows a waveform, preview playback through the default
 Trim controls are now draggable bars on the waveform rather than separate sliders. Start/end times and selected length remain visible. Handles support mouse/touch pointer capture and keyboard arrows (0.01 seconds, or 0.1 with Shift), Home, and End; handles cannot cross. The 35-second save limit remains unchanged.
 
 Preview playback now displays a teal playhead and current source timestamp on the waveform. Position comes from the audio output device's played-byte counter, with animation between state updates, bounded to the selected end time. Stop/cancel hides it and a new preview begins at the selected start.
+
+A bottom Edit/Done button controls soundboard edit mode. Assigned pads show a black pencil at top left and red trash can at top right only while editing. Delete asks for confirmation. The pencil opens the same sound dialog preloaded with the saved clip, waveform, name, and volume, allowing replacement or further trimming. Cancel preserves the pad; saving preserves its color and position. Inline ellipsis controls and the separate pad settings card are removed.

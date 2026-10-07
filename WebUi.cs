@@ -236,7 +236,7 @@ public sealed partial class MainForm
             var root = doc.RootElement;
             var command = root.GetProperty("command").GetString();
             webBusy = true;
-            if (command is "soundPreview" or "soundPreviewStop" or "soundBrowse" or "soundCancel" or "soundImport" or "soundPlay" or "soundStop" or "soundMaster" or "soundRename" or "soundVolume" or "soundRemove")
+            if (command is "soundEdit" or "soundPreview" or "soundPreviewStop" or "soundBrowse" or "soundCancel" or "soundImport" or "soundPlay" or "soundStop" or "soundMaster" or "soundRename" or "soundVolume" or "soundRemove")
             {
                 PublishWebState();
                 await HandleSoundboardCommandAsync(root, command);

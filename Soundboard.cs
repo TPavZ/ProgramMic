@@ -134,14 +134,25 @@ public sealed partial class MainForm
             return;
         }
         if (command == "soundCancel") { StopSoundPreview(); pendingSoundFile = null; pendingSoundAudio = null; return; }
-        if (command == "soundBrowse")
+        if (command is "soundBrowse" or "soundEdit")
         {
-            using var dialog = new OpenFileDialog { Title = "Choose a sound", Filter = "Audio clips|*.wav;*.mp3;*.aiff;*.aif;*.wma;*.m4a|All files|*.*", RestoreDirectory = true };
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-            if (new FileInfo(dialog.FileName).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
+            string sourcePath;
+            if (command == "soundEdit")
+            {
+                var existing = soundboardSettings.Clips.FirstOrDefault(c => c.Id == root.GetProperty("id").GetString());
+                if (existing is null) return;
+                sourcePath = Path.Combine(SoundboardFolder, existing.FileName);
+            }
+            else
+            {
+                using var dialog = new OpenFileDialog { Title = "Choose a sound", Filter = "Audio clips|*.wav;*.mp3;*.aiff;*.aif;*.wma;*.m4a|All files|*.*", RestoreDirectory = true };
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                sourcePath = dialog.FileName;
+            }
+            if (new FileInfo(sourcePath).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
             StopSoundPreview();
-            var decoded = await Task.Run(() => DecodeClip(dialog.FileName));
-            pendingSoundFile = dialog.FileName;
+            var decoded = await Task.Run(() => DecodeClip(sourcePath));
+            pendingSoundFile = sourcePath;
             pendingSoundAudio = decoded;
             var peaks = new float[160];
             for (int i = 0; i < peaks.Length; i++)
@@ -164,7 +175,7 @@ public sealed partial class MainForm
             if (pad < 0 || pad >= 108 || soundboardSettings.Clips.Any(c => c.Pad == pad && c != replacement)) throw new InvalidOperationException("That pad is already assigned.");
             StopSoundPreview();
             var trimmed = TrimSoundForSave(pendingSoundAudio, root.GetProperty("start").GetDouble(), root.GetProperty("end").GetDouble());
-            var clip = new SoundClip { Name = name, Pad = pad, Volume = volume, Color = PadColors[Random.Shared.Next(PadColors.Length)] };
+            var clip = new SoundClip { Name = name, Pad = pad, Volume = volume, Color = replacement?.Color ?? PadColors[Random.Shared.Next(PadColors.Length)] };
             clip.FileName = clip.Id + ".wav";
             Directory.CreateDirectory(SoundboardFolder);
             using (var writer = new WaveFileWriter(Path.Combine(SoundboardFolder, clip.FileName), WaveFormat.CreateIeeeFloatWaveFormat(48000, 2)))
