@@ -34,3 +34,5 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 @keyframes activation-glow{0%{box-shadow:0 0 0 0 #22c55e77}45%{box-shadow:0 0 20px 3px #22c55e55}100%{box-shadow:0 0 0 8px #22c55e00}}
 @keyframes activation-sparkles{0%{opacity:0;transform:scale(.65)}20%{opacity:1}65%{opacity:.85}100%{opacity:0;transform:scale(1.18) translateY(-9px)}}
 @media(prefers-reduced-motion:reduce){#toggle{transition:none}#toggle[aria-pressed="true"]{animation:none}#toggle[aria-pressed="true"]::after{display:none}}
+
+#toggle[aria-pressed="true"]::after{display:none}#toggle[aria-pressed="true"]{animation:none}.activation-spark{position:absolute;pointer-events:none;z-index:2;color:#fff;font-size:22px;line-height:1;text-shadow:0 0 7px #bbf7d0,0 0 12px #86efac}
