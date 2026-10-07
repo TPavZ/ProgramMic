@@ -16,7 +16,6 @@ function render(s){
  muteButton.setAttribute('aria-label',s.micMuted?'Unmute microphone':'Mute microphone');
  $('status').textContent=s.programEnabled?'Routing Active':'Routing Inactive';$('dot').classList.toggle('live',s.programEnabled);
  for(const el of document.querySelectorAll('button:not([data-local]),select,input'))el.disabled=s.busy;
- $('soundStop').disabled=false;
  $('hotkeyValue').textContent=s.hotkey;
  $('hotkey').textContent=s.assigningHotkey?'Press any key…':'Assign Hotkey';
  $('hotkey').setAttribute('aria-pressed',Boolean(s.assigningHotkey));
@@ -81,8 +80,6 @@ function setSoundboardOpen(open){
 }
 $('soundboardOpen').addEventListener('click',()=>setSoundboardOpen(!document.body.classList.contains('soundboard-open')));
 $('soundboardClose').addEventListener('click',()=>setSoundboardOpen(false));
-$('soundImport').addEventListener('click',()=>send('soundImport'));
-$('soundStop').addEventListener('click',()=>send('soundStop'));
 $('soundMaster').addEventListener('input',()=>$('soundMasterValue').value=`${$('soundMaster').value}%`);
 $('soundMaster').addEventListener('change',()=>send('soundMaster',{value:Number($('soundMaster').value)}));
 document.addEventListener('keydown',e=>{
