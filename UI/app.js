@@ -59,14 +59,13 @@ function renderSoundboard(s){
 }
 function setSoundboardOpen(open){
  const panel=$('soundboardPanel');panel.inert=!open;panel.setAttribute('aria-hidden',!open);
- document.querySelector('main').inert=open;
- $('soundboardBackdrop').hidden=!open;document.body.classList.toggle('soundboard-open',open);
+
+ document.body.classList.toggle('soundboard-open',open);send('soundPanel',{open});
  $('soundboardOpen').setAttribute('aria-expanded',open);
  if(open){send('cancelHotkey');$('soundboardClose').focus();}else $('soundboardOpen').focus();
 }
-$('soundboardOpen').addEventListener('click',()=>setSoundboardOpen(true));
+$('soundboardOpen').addEventListener('click',()=>setSoundboardOpen(!document.body.classList.contains('soundboard-open')));
 $('soundboardClose').addEventListener('click',()=>setSoundboardOpen(false));
-$('soundboardBackdrop').addEventListener('click',()=>setSoundboardOpen(false));
 $('soundImport').addEventListener('click',()=>send('soundImport'));
 $('soundStop').addEventListener('click',()=>send('soundStop'));
 $('soundMaster').addEventListener('input',()=>$('soundMasterValue').value=`${$('soundMaster').value}%`);
@@ -74,12 +73,6 @@ $('soundMaster').addEventListener('change',()=>send('soundMaster',{value:Number(
 document.addEventListener('keydown',e=>{
  if(!document.body.classList.contains('soundboard-open'))return;
  if(e.key==='Escape'){e.preventDefault();setSoundboardOpen(false);}
- if(e.key==='Tab'){
-  const controls=[...$('soundboardPanel').querySelectorAll('button,input')].filter(el=>!el.disabled);
-  const first=controls[0],last=controls.at(-1);
-  if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
-  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
- }
 });
 if(bridge){bridge.addEventListener('message',e=>{if(e.data.type==='state')render(e.data);});send('ready');}
 else{$('status').textContent='Design preview — open ProgramMic to connect audio';for(const el of document.querySelectorAll('button:not([data-local]),select,input'))el.disabled=true;}

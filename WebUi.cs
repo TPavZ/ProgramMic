@@ -11,6 +11,24 @@ public sealed partial class MainForm
     private const int MIC_HOTKEY_ID = 0x504E;
     private Keys micHotkeyKey = Keys.None;
     private bool assigningMicHotkey;
+    private int soundboardAddedWidth;
+
+    private void SetSoundboardExpanded(bool open)
+    {
+        if (open && soundboardAddedWidth == 0 && WindowState == FormWindowState.Normal)
+        {
+            var area = Screen.FromControl(this).WorkingArea;
+            int extra = Math.Min(360, Math.Max(0, area.Width - Width));
+            soundboardAddedWidth = extra;
+            Width += extra;
+            if (Right > area.Right) Left = area.Right - Width;
+        }
+        else if (!open && soundboardAddedWidth > 0)
+        {
+            if (WindowState == FormWindowState.Normal) Width -= soundboardAddedWidth;
+            soundboardAddedWidth = 0;
+        }
+    }
 
     private void ShowDuplicateHotkeyError(Keys key)
     {
@@ -201,7 +219,10 @@ public sealed partial class MainForm
             }
             switch (command)
             {
-                case "ready": break;
+                case "ready": SetSoundboardExpanded(false); break;
+                case "soundPanel":
+                    SetSoundboardExpanded(root.GetProperty("open").GetBoolean());
+                    break;
                 case "cancelHotkey":
                     CancelHotkeyAssignment();
                     break;
