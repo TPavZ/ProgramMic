@@ -12,6 +12,22 @@ public sealed partial class MainForm
     private Keys micHotkeyKey = Keys.None;
     private bool assigningMicHotkey;
 
+    private void ShowDuplicateHotkeyError(Keys key)
+    {
+        MessageBox.Show(this,
+            $"{key} is already assigned to the other action.\n\nToggle ProgramMic and Toggle Microphone must use different keys. Your previous assignment has been kept.",
+            "Hotkey Already Assigned", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+
+    private void ValidateLoadedHotkeys()
+    {
+        if (micHotkeyKey == Keys.None || micHotkeyKey != hotkeyKey) return;
+        micHotkeyKey = Keys.None;
+        SaveSettings();
+        MessageBox.Show(this, "Your saved hotkeys used the same key. The microphone hotkey has been cleared. Please assign a different key for Toggle Microphone.",
+            "Duplicate Saved Hotkeys", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+
     private bool RegisterMicHotkey(bool showError)
     {
         if (micHotkeyKey == Keys.None) return true;
@@ -39,6 +55,13 @@ public sealed partial class MainForm
     private void CompleteMicHotkeySelection(Keys key)
     {
         if (!assigningMicHotkey || key is Keys.None or Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin) return;
+        if (key == hotkeyKey)
+        {
+            CancelHotkeyAssignment();
+            ShowDuplicateHotkeyError(key);
+            PublishWebState();
+            return;
+        }
         var oldKey = micHotkeyKey;
         micHotkeyKey = key;
         assigningMicHotkey = false;
@@ -199,6 +222,16 @@ public sealed partial class MainForm
     private void CompleteHotkeySelection(Keys key)
     {
         if (!assigningHotkey || key is Keys.None or Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin) return;
+        if (key == micHotkeyKey)
+        {
+            CancelHotkeyAssignment();
+            hotkeyLabel.Text = HotkeyText();
+            setHotkeyButton.Text = "ASSIGN HOTKEY";
+            toggleButton.Enabled = true;
+            ShowDuplicateHotkeyError(key);
+            PublishWebState();
+            return;
+        }
         var oldKey = hotkeyKey;
         var oldMods = hotkeyMods;
         hotkeyKey = key;

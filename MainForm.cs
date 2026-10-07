@@ -364,7 +364,7 @@ Controls.Add(root);
         refreshTimer.Tick+=(_,_)=>{ };
         refreshTimer.Start();
 
-        Shown+=async(_,_)=>{RegisterCurrentHotkey(false);RegisterMicHotkey(false);await EnsureEngineRunningAsync();};
+        Shown+=async(_,_)=>{ValidateLoadedHotkeys();RegisterCurrentHotkey(false);RegisterMicHotkey(false);await EnsureEngineRunningAsync();};
         FormClosing+=(_,_)=>{SaveSettings();closing=true;refreshTimer.Stop();StopEngine();UnregisterHotKey(Handle,HOTKEY_ID);UnregisterHotKey(Handle,MIC_HOTKEY_ID);};
         Shown+=async(_,_)=>await InitializeWebUiAsync();
     }
