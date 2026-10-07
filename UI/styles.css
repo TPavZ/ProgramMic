@@ -9,3 +9,5 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 .section-heading{display:flex;align-items:center;gap:16px;margin-top:0}.section-heading h3{margin:0;flex:0 0 190px}.section-picker{flex:1;min-width:0}.section-picker select{min-width:0}.destination{display:block}.destination>p{margin-top:12px;text-align:right}@media(max-width:520px){.section-heading{gap:12px}.section-heading h3{flex-basis:140px;font-size:16px}}
 
 .section-heading .number{flex:0 0 24px}.card{padding:18px 22px}.card .volume{margin-top:12px}.card input[type=range]{margin-bottom:0}@media(max-width:520px){.section-heading h3{flex-basis:125px}.section-heading .number{flex-basis:20px}}
+
+#toggle[aria-pressed="true"]{background:#228b45;border-color:#228b45;color:#fff;box-shadow:none}
