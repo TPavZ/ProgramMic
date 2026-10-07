@@ -20,7 +20,10 @@ function render(s){
 for(const id of ['process','microphone','output'])$(id).addEventListener('change',()=>send('select',{target:id,value:Number($(id).value)}));
 for(const [id,target,label] of [['programVolume','program','programValue'],['micVolume','microphone','micValue'],['masterVolume','output','masterValue']]){ $(id).addEventListener('input',()=>$(label).value=`${$(id).value}%`);$(id).addEventListener('change',()=>send('volume',{target,value:Number($(id).value)})); }
 for(const command of ['toggle','refresh','muteMic'])$(command).addEventListener('click',()=>send(command));
-$('hotkey').addEventListener('click',()=>send('assignHotkey'));
-$('micHotkey').addEventListener('click',()=>send('assignMicHotkey'));
+document.addEventListener('pointerdown',e=>{
+ if(!e.target.closest('#hotkey,#micHotkey'))send('cancelHotkey');
+},true);
+$('hotkey').addEventListener('click',()=>send($('hotkey').getAttribute('aria-pressed')==='true'?'cancelHotkey':'assignHotkey'));
+$('micHotkey').addEventListener('click',()=>send($('micHotkey').getAttribute('aria-pressed')==='true'?'cancelHotkey':'assignMicHotkey'));
 if(bridge){bridge.addEventListener('message',e=>{if(e.data.type==='state')render(e.data);});send('ready');}
 else{$('status').textContent='Design preview — open ProgramMic to connect audio';for(const el of document.querySelectorAll('button,select,input'))el.disabled=true;}

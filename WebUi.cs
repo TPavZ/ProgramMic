@@ -39,7 +39,15 @@ public sealed partial class MainForm
 
     private void CancelHotkeyAssignment()
     {
-        if (assigningHotkey) { assigningHotkey = false; RegisterCurrentHotkey(false); }
+        if (assigningHotkey)
+        {
+            assigningHotkey = false;
+            RegisterCurrentHotkey(false);
+            hotkeyLabel.Text = HotkeyText();
+            hotkeyLabel.ForeColor = TextSecondary;
+            setHotkeyButton.Text = "ASSIGN HOTKEY";
+            toggleButton.Enabled = true;
+        }
         if (assigningMicHotkey) { assigningMicHotkey = false; RegisterMicHotkey(false); }
     }
 
@@ -173,6 +181,9 @@ public sealed partial class MainForm
             switch (command)
             {
                 case "ready": break;
+                case "cancelHotkey":
+                    CancelHotkeyAssignment();
+                    break;
                 case "toggle":
                     await EnsureEngineRunningAsync();
                     if (running) ToggleProgram();
