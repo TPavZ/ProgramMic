@@ -24,6 +24,7 @@ public sealed partial class MainForm
     private SoundboardSettings soundboardSettings = new();
     private readonly Dictionary<string, float[]> soundCache = new();
     private int soundPlaybackEpoch;
+    private string? pendingSoundFile;
     private static string SoundboardFolder => Path.Combine(SettingsDirectory, "Soundboard");
     private static string SoundboardSettingsPath => Path.Combine(SoundboardFolder, "library.json");
 
@@ -81,21 +82,35 @@ public sealed partial class MainForm
 
     private async Task HandleSoundboardCommandAsync(JsonElement root, string command)
     {
+        if (command == "soundCancel") { pendingSoundFile = null; return; }
+        if (command == "soundBrowse")
+        {
+            using var dialog = new OpenFileDialog { Title = "Choose a sound", Filter = "Audio clips|*.wav;*.mp3;*.aiff;*.aif;*.wma;*.m4a|All files|*.*", RestoreDirectory = true };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            if (new FileInfo(dialog.FileName).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
+            await Task.Run(() => DecodeClip(dialog.FileName));
+            pendingSoundFile = dialog.FileName;
+            webUi?.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "soundFile", file = Path.GetFileName(pendingSoundFile), name = Path.GetFileNameWithoutExtension(pendingSoundFile) }));
+            return;
+        }
         if (command == "soundImport")
         {
+            var source = pendingSoundFile;
+            if (source is null || !File.Exists(source)) throw new InvalidOperationException("Choose an audio file first.");
+            var name = root.GetProperty("name").GetString()?.Trim();
+            if (string.IsNullOrEmpty(name) || name.Length > 60) throw new InvalidOperationException("Enter a sound name between 1 and 60 characters.");
+            int volume = Math.Clamp(root.GetProperty("value").GetInt32(), 0, 100);
             var replaceId = root.TryGetProperty("id", out var idProperty) ? idProperty.GetString() : null;
             var replacement = soundboardSettings.Clips.FirstOrDefault(c => c.Id == replaceId);
             if (replacement is null && soundboardSettings.Clips.Count >= 100) throw new InvalidOperationException("Your soundboard can hold up to 100 clips.");
             int pad = replacement?.Pad ?? (root.TryGetProperty("pad", out var padProperty) ? padProperty.GetInt32() : Enumerable.Range(0, 108).First(p => soundboardSettings.Clips.All(c => c.Pad != p)));
             if (pad < 0 || pad >= 108 || soundboardSettings.Clips.Any(c => c.Pad == pad && c != replacement)) throw new InvalidOperationException("That pad is already assigned.");
-            using var dialog = new OpenFileDialog { Title = "Add a soundboard clip", Filter = "Audio clips|*.wav;*.mp3;*.aiff;*.aif;*.wma;*.m4a|All files|*.*", RestoreDirectory = true };
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-            if (new FileInfo(dialog.FileName).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
-            await Task.Run(() => DecodeClip(dialog.FileName));
-            var clip = new SoundClip { Name = Path.GetFileNameWithoutExtension(dialog.FileName), Pad = pad, Volume = replacement?.Volume ?? 100 };
-            clip.FileName = clip.Id + Path.GetExtension(dialog.FileName).ToLowerInvariant();
+            if (new FileInfo(source).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
+            await Task.Run(() => DecodeClip(source));
+            var clip = new SoundClip { Name = name, Pad = pad, Volume = volume };
+            clip.FileName = clip.Id + Path.GetExtension(source).ToLowerInvariant();
             Directory.CreateDirectory(SoundboardFolder);
-            File.Copy(dialog.FileName, Path.Combine(SoundboardFolder, clip.FileName));
+            File.Copy(source, Path.Combine(SoundboardFolder, clip.FileName));
             if (replacement is not null)
             {
                 soundboard.Stop(replacement.Id);
@@ -105,6 +120,8 @@ public sealed partial class MainForm
             soundboardSettings.Clips.Add(clip);
             SaveSoundboard();
             if (replacement is not null) File.Delete(Path.Combine(SoundboardFolder, replacement.FileName));
+            pendingSoundFile = null;
+            webUi?.CoreWebView2.PostWebMessageAsJson("{\"type\":\"soundSaved\"}");
             return;
         }
         if (command == "soundStop") { soundPlaybackEpoch++; soundboard.StopAll(); return; }

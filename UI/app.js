@@ -23,6 +23,7 @@ function render(s){
  $('micHotkey').textContent=s.assigningMicHotkey?'Press any key…':'Assign Hotkey';
  $('micHotkey').setAttribute('aria-pressed',Boolean(s.assigningMicHotkey));
  renderSoundboard(s);
+ updateSoundUpload(s.busy);
 }
 for(const id of ['process','microphone','output'])$(id).addEventListener('change',()=>send('select',{target:id,value:Number($(id).value)}));
 for(const [id,target,label] of [['programVolume','program','programValue'],['micVolume','microphone','micValue'],['masterVolume','output','masterValue']]){ $(id).addEventListener('input',()=>$(label).value=`${$(id).value}%`);$(id).addEventListener('change',()=>send('volume',{target,value:Number($(id).value)})); }
@@ -51,7 +52,7 @@ function renderSoundboard(s){
    const symbol=document.createElement('span');symbol.className='pad-symbol';symbol.textContent=clip?'▶':'+';
    const title=document.createElement('span');title.className='pad-name';title.textContent=clip?clip.name:'Assign Sound';
    play.append(symbol,title);play.setAttribute('aria-label',clip?`Play ${clip.name}`:`Assign sound to pad ${pad+1}`);
-   play.addEventListener('click',()=>send(clip?'soundPlay':'soundImport',clip?{id:clip.id}:{pad}));card.append(play);
+   play.addEventListener('click',()=>clip?send('soundPlay',{id:clip.id}):openSoundUpload({pad},play));card.append(play);
    if(clip){const edit=document.createElement('button');edit.className='pad-edit';edit.textContent='⋯';edit.setAttribute('aria-label',`Edit pad ${pad+1}: ${clip.name}`);edit.addEventListener('click',()=>{selectedPadId=selectedPadId===clip.id?null:clip.id;soundLibrarySignature='';renderSoundboard(s);});card.append(edit);}
    grid.append(card);
   }
@@ -61,7 +62,7 @@ function renderSoundboard(s){
    const heading=document.createElement('h3');heading.textContent=`Pad ${String(clip.pad+1).padStart(2,'0')} Settings`;
    const name=document.createElement('input');name.type='text';name.value=clip.name;name.maxLength=60;name.setAttribute('aria-label','Sound name');name.addEventListener('change',()=>send('soundRename',{id:clip.id,name:name.value}));
    const row=document.createElement('div');row.className='sound-clip-actions';
-   const replace=document.createElement('button');replace.className='secondary';replace.textContent='Change Sound';replace.addEventListener('click',()=>send('soundImport',{id:clip.id}));
+   const replace=document.createElement('button');replace.className='secondary';replace.textContent='Change Sound';replace.addEventListener('click',()=>openSoundUpload({id:clip.id,name:clip.name,volume:clip.volume},replace));
    const remove=document.createElement('button');remove.className='secondary';remove.textContent='Remove';remove.setAttribute('aria-label',`Remove ${clip.name}`);remove.addEventListener('click',()=>{if(window.confirm(`Remove "${clip.name}" from your soundboard?`))send('soundRemove',{id:clip.id});});
    row.append(replace,remove);
    const label=document.createElement('label');label.textContent=`Clip volume: ${clip.volume}%`;
@@ -83,8 +84,37 @@ $('soundboardClose').addEventListener('click',()=>setSoundboardOpen(false));
 $('soundMaster').addEventListener('input',()=>$('soundMasterValue').value=`${$('soundMaster').value}%`);
 $('soundMaster').addEventListener('change',()=>send('soundMaster',{value:Number($('soundMaster').value)}));
 document.addEventListener('keydown',e=>{
+ if($('soundUpload').open)return;
  if(!document.body.classList.contains('soundboard-open'))return;
  if(e.key==='Escape'){e.preventDefault();setSoundboardOpen(false);}
 });
-if(bridge){bridge.addEventListener('message',e=>{if(e.data.type==='state')render(e.data);});send('ready');}
+let uploadTarget=null,uploadHasFile=false,uploadBusy=false,uploadOpener=null;
+function updateSoundUpload(busy=uploadBusy){
+ uploadBusy=busy;
+ $('uploadSave').disabled=busy||!uploadHasFile||!$('uploadName').value.trim();
+ $('uploadBrowse').disabled=busy;
+ $('uploadCancel').disabled=busy;$('uploadClose').disabled=busy;
+ $('uploadSave').textContent=busy?'Please wait…':uploadTarget?.id?'Save Sound':'Add Sound';
+}
+function openSoundUpload(target,opener){
+ uploadTarget=target;uploadHasFile=false;uploadOpener=opener;
+ $('uploadFile').textContent='Choose a file';$('uploadName').value=target.name??'';
+ $('uploadVolume').value=target.volume??100;$('uploadVolumeValue').value=`${$('uploadVolume').value}%`;
+ updateSoundUpload(false);send('soundCancel');$('soundUpload').showModal();$('uploadBrowse').focus();
+}
+function closeSoundUpload(){
+ $('soundUpload').close();uploadTarget=null;uploadHasFile=false;
+ if(uploadOpener?.isConnected)uploadOpener.focus();else $('soundboardClose').focus();
+}
+for(const id of ['uploadClose','uploadCancel'])$(id).addEventListener('click',()=>{if(!uploadBusy){send('soundCancel');closeSoundUpload();}});
+$('soundUpload').addEventListener('cancel',e=>{e.preventDefault();if(!uploadBusy){send('soundCancel');closeSoundUpload();}});
+$('uploadBrowse').addEventListener('click',()=>{updateSoundUpload(true);send('soundBrowse');});
+$('uploadName').addEventListener('input',()=>updateSoundUpload());
+$('uploadVolume').addEventListener('input',()=>$('uploadVolumeValue').value=`${$('uploadVolume').value}%`);
+$('uploadForm').addEventListener('submit',e=>{e.preventDefault();if($('uploadSave').disabled)return;updateSoundUpload(true);send('soundImport',{...uploadTarget,name:$('uploadName').value.trim(),value:Number($('uploadVolume').value)});});
+if(bridge){bridge.addEventListener('message',e=>{
+ if(e.data.type==='state')render(e.data);
+ if(e.data.type==='soundFile'&&$('soundUpload').open){uploadHasFile=true;$('uploadFile').textContent=e.data.file;if(!$('uploadName').value.trim())$('uploadName').value=e.data.name.slice(0,60);updateSoundUpload(false);}
+ if(e.data.type==='soundSaved')closeSoundUpload();
+});send('ready');}
 else{$('status').textContent='Design preview — open ProgramMic to connect audio';for(const el of document.querySelectorAll('button:not([data-local]),select,input'))el.disabled=true;}
