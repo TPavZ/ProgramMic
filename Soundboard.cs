@@ -29,6 +29,10 @@ public sealed partial class MainForm
     private float[]? pendingSoundAudio;
     private WaveOut? soundPreviewOutput;
     private RawSourceWaveStream? soundPreviewStream;
+    private double soundPreviewStart, soundPreviewEnd;
+
+    private double SoundPreviewPosition => soundPreviewOutput is null ? -1 :
+        Math.Clamp(soundPreviewStart + soundPreviewOutput.GetPosition() / 384000d, soundPreviewStart, soundPreviewEnd);
 
     private void StopSoundPreview()
     {
@@ -120,6 +124,8 @@ public sealed partial class MainForm
             if (pendingSoundAudio is null) return;
             StopSoundPreview();
             var previewSamples = TrimSound(pendingSoundAudio, root.GetProperty("start").GetDouble(), root.GetProperty("end").GetDouble());
+            soundPreviewStart = root.GetProperty("start").GetDouble();
+            soundPreviewEnd = soundPreviewStart + previewSamples.Length / 96000d;
             soundPreviewStream = new RawSourceWaveStream(new MemoryStream(MemoryMarshal.AsBytes(previewSamples.AsSpan()).ToArray()), WaveFormat.CreateIeeeFloatWaveFormat(48000, 2));
             soundPreviewOutput = new WaveOut();
             soundPreviewOutput.Init(soundPreviewStream);

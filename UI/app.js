@@ -25,6 +25,7 @@ function render(s){
  renderSoundboard(s);
  updateSoundUpload(s.busy);
  previewPlaying=Boolean(s.soundPreviewPlaying);$('uploadPreviewPlay').textContent=previewPlaying?'■ Stop':'▶ Preview';
+ syncPreviewPlayhead(s);
 }
 for(const id of ['process','microphone','output'])$(id).addEventListener('change',()=>send('select',{target:id,value:Number($(id).value)}));
 for(const [id,target,label] of [['programVolume','program','programValue'],['micVolume','microphone','micValue'],['masterVolume','output','masterValue']]){ $(id).addEventListener('input',()=>$(label).value=`${$(id).value}%`);$(id).addEventListener('change',()=>send('volume',{target,value:Number($(id).value)})); }
@@ -92,6 +93,24 @@ document.addEventListener('keydown',e=>{
 });
 let uploadTarget=null,uploadHasFile=false,uploadBusy=false,uploadOpener=null;
 let uploadDuration=0,previewPlaying=false;
+let playheadPosition=-1,playheadEnd=0,playheadUpdated=0,playheadFrame=0;
+function paintPreviewPlayhead(){
+ playheadFrame=0;
+ const visible=playheadPosition>=0&&uploadDuration>0&&$('soundUpload').open&&uploadHasFile;
+ $('wavePlayhead').style.display=visible?'':'none';
+ $('previewPosition').hidden=!visible;
+ if(!visible)return;
+ const position=Math.min(playheadEnd,playheadPosition+(previewPlaying?(performance.now()-playheadUpdated)/1000:0));
+ const x=position/uploadDuration*400;
+ $('wavePlayhead').setAttribute('x1',x);$('wavePlayhead').setAttribute('x2',x);
+ $('previewPosition').value=`${position.toFixed(2)}s`;
+ if(previewPlaying)playheadFrame=requestAnimationFrame(paintPreviewPlayhead);
+}
+function syncPreviewPlayhead(s){
+ playheadPosition=s.soundPreviewPosition??-1;playheadEnd=s.soundPreviewEnd??0;playheadUpdated=performance.now();
+ if(playheadFrame)cancelAnimationFrame(playheadFrame);
+ paintPreviewPlayhead();
+}
 function trimSelection(){return {start:Number($('uploadStart').value),end:Number($('uploadEnd').value)};}
 function updateTrim(){
  const {start,end}=trimSelection();
@@ -120,12 +139,14 @@ function updateSoundUpload(busy=uploadBusy){
 function openSoundUpload(target,opener){
  uploadTarget=target;uploadHasFile=false;uploadOpener=opener;
  $('uploadPreview').hidden=true;uploadDuration=0;previewPlaying=false;
+ playheadPosition=-1;paintPreviewPlayhead();
  $('uploadFile').textContent='Choose a file';$('uploadName').value=target.name??'';
  $('uploadVolume').value=target.volume??100;$('uploadVolumeValue').value=`${$('uploadVolume').value}%`;
  updateSoundUpload(false);send('soundCancel');$('soundUpload').showModal();$('uploadBrowse').focus();
 }
 function closeSoundUpload(){
  send('soundPreviewStop');
+ playheadPosition=-1;paintPreviewPlayhead();
  $('soundUpload').close();uploadTarget=null;uploadHasFile=false;
  if(uploadOpener?.isConnected)uploadOpener.focus();else $('soundboardClose').focus();
 }

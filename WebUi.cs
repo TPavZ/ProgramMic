@@ -207,6 +207,7 @@ public sealed partial class MainForm
             soundClips = soundboardSettings.Clips.Select(c => new { id = c.Id, name = c.Name, volume = c.Volume, pad = c.Pad, color = c.Color }).ToArray(),
             soundVolume = soundboardSettings.Volume, soundPlaying = soundboard.Playing,
             soundPreviewPlaying = soundPreviewOutput?.PlaybackState == NAudio.Wave.PlaybackState.Playing,
+            soundPreviewPosition = SoundPreviewPosition, soundPreviewEnd,
             processes = Options(processBox), microphones = Options(micBox), outputs = Options(outputBox),
             process = processBox.SelectedIndex, microphone = micBox.SelectedIndex, output = outputBox.SelectedIndex,
             programVolume = programVolume.Value, micVolume = micVolume.Value, masterVolume = masterVolume.Value
