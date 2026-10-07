@@ -49,10 +49,9 @@ function renderSoundboard(s){
    const clip=clips.find(c=>c.pad===pad);
    const card=document.createElement('div');card.className='pad-cell';if(clip)card.dataset.clip=clip.id;
    const play=document.createElement('button');play.className=clip?'sound-pad assigned':'sound-pad empty';
-   const number=document.createElement('span');number.className='pad-number';number.textContent=String(pad+1).padStart(2,'0');
    const symbol=document.createElement('span');symbol.className='pad-symbol';symbol.textContent=clip?'▶':'+';
    const title=document.createElement('span');title.className='pad-name';title.textContent=clip?clip.name:'Assign Sound';
-   play.append(number,symbol,title);play.setAttribute('aria-label',clip?`Play ${clip.name}`:`Assign sound to pad ${pad+1}`);
+   play.append(symbol,title);play.setAttribute('aria-label',clip?`Play ${clip.name}`:`Assign sound to pad ${pad+1}`);
    play.addEventListener('click',()=>send(clip?'soundPlay':'soundImport',clip?{id:clip.id}:{pad}));card.append(play);
    if(clip){const edit=document.createElement('button');edit.className='pad-edit';edit.textContent='⋯';edit.setAttribute('aria-label',`Edit pad ${pad+1}: ${clip.name}`);edit.addEventListener('click',()=>{selectedPadId=selectedPadId===clip.id?null:clip.id;soundLibrarySignature='';renderSoundboard(s);});card.append(edit);}
    grid.append(card);
