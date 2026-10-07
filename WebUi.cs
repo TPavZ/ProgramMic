@@ -204,7 +204,7 @@ public sealed partial class MainForm
             type = "state", running, programEnabled, micMuted, assigningHotkey, busy = webBusy,
             status = statusLabel.Text, hotkey = HotkeyText(),
             assigningMicHotkey, micHotkey = micHotkeyKey == Keys.None ? "Not assigned" : micHotkeyKey.ToString(),
-            soundClips = soundboardSettings.Clips.Select(c => new { id = c.Id, name = c.Name, volume = c.Volume, pad = c.Pad }).ToArray(),
+            soundClips = soundboardSettings.Clips.Select(c => new { id = c.Id, name = c.Name, volume = c.Volume, pad = c.Pad, color = c.Color }).ToArray(),
             soundVolume = soundboardSettings.Volume, soundPlaying = soundboard.Playing,
             processes = Options(processBox), microphones = Options(micBox), outputs = Options(outputBox),
             process = processBox.SelectedIndex, microphone = micBox.SelectedIndex, output = outputBox.SelectedIndex,

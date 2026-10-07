@@ -14,6 +14,7 @@ public sealed partial class MainForm
         public string FileName { get; set; } = "";
         public int Volume { get; set; } = 100;
         public int Pad { get; set; } = -1;
+        public string Color { get; set; } = "";
     }
     private sealed class SoundboardSettings
     {
@@ -25,6 +26,7 @@ public sealed partial class MainForm
     private readonly Dictionary<string, float[]> soundCache = new();
     private int soundPlaybackEpoch;
     private string? pendingSoundFile;
+    private static readonly string[] PadColors = ["#FAEDCB", "#C9E4DE", "#C6DEF1", "#DBCDF0", "#F2C6DE", "#F7D9C4"];
     private static string SoundboardFolder => Path.Combine(SettingsDirectory, "Soundboard");
     private static string SoundboardSettingsPath => Path.Combine(SoundboardFolder, "library.json");
 
@@ -41,6 +43,7 @@ public sealed partial class MainForm
             var usedPads = new HashSet<int>();
             foreach (var clip in soundboardSettings.Clips)
             {
+                if (!PadColors.Contains(clip.Color)) clip.Color = PadColors[Random.Shared.Next(PadColors.Length)];
                 if (clip.Pad < 0 || clip.Pad >= 108 || !usedPads.Add(clip.Pad))
                 {
                     clip.Pad = Enumerable.Range(0, 108).First(p => !usedPads.Contains(p));
@@ -48,6 +51,7 @@ public sealed partial class MainForm
                 }
             }
             soundboard.Gain = soundboardSettings.Volume / 100f;
+            if (soundboardSettings.Clips.Count > 0) SaveSoundboard();
         }
         catch { soundboardSettings = new(); }
     }
@@ -107,7 +111,7 @@ public sealed partial class MainForm
             if (pad < 0 || pad >= 108 || soundboardSettings.Clips.Any(c => c.Pad == pad && c != replacement)) throw new InvalidOperationException("That pad is already assigned.");
             if (new FileInfo(source).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
             await Task.Run(() => DecodeClip(source));
-            var clip = new SoundClip { Name = name, Pad = pad, Volume = volume };
+            var clip = new SoundClip { Name = name, Pad = pad, Volume = volume, Color = PadColors[Random.Shared.Next(PadColors.Length)] };
             clip.FileName = clip.Id + Path.GetExtension(source).ToLowerInvariant();
             Directory.CreateDirectory(SoundboardFolder);
             File.Copy(source, Path.Combine(SoundboardFolder, clip.FileName));
