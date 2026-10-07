@@ -44,7 +44,7 @@ function renderSoundboard(s){
   soundLibrarySignature=signature;
   const list=$('soundClips');list.replaceChildren();
   const grid=document.createElement('div');grid.className='pads-grid';list.append(grid);
-  const padCount=Math.max(12,Math.ceil((Math.max(-1,...clips.map(c=>c.pad))+2)/12)*12);
+  const padCount=Math.max(15,Math.ceil((Math.max(-1,...clips.map(c=>c.pad))+2)/3)*3);
   for(let pad=0;pad<Math.min(108,padCount);pad++){
    const clip=clips.find(c=>c.pad===pad);
    const card=document.createElement('div');card.className='pad-cell';if(clip)card.dataset.clip=clip.id;
