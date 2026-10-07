@@ -12,6 +12,23 @@ public sealed partial class MainForm
     private Keys micHotkeyKey = Keys.None;
     private bool assigningMicHotkey;
     private int soundboardAddedWidth;
+    private bool initialWebWindowSized;
+
+    private async Task FitInitialWebWindowAsync()
+    {
+        if (initialWebWindowSized || closing || webUi?.CoreWebView2 is null) return;
+        initialWebWindowSized = true;
+        var measurements = await webUi.CoreWebView2.ExecuteScriptAsync(
+            "[Math.ceil(document.querySelector('main').getBoundingClientRect().height),window.innerHeight]");
+        if (closing || webUi.IsDisposed) return;
+        var values = JsonSerializer.Deserialize<double[]>(measurements);
+        if (values is not { Length: 2 } || values[1] <= 0) return;
+        int frameHeight = Height - ClientSize.Height;
+        int requiredHeight = (int)Math.Ceiling((values[0] + 8) * webUi.ClientSize.Height / values[1]);
+        var area = Screen.FromControl(this).WorkingArea;
+        ClientSize = new Size(ClientSize.Width, Math.Min(requiredHeight, area.Height - frameHeight));
+        if (Bottom > area.Bottom) Top = Math.Max(area.Top, area.Bottom - Height);
+    }
 
     private void SetSoundboardExpanded(bool open)
     {
@@ -152,11 +169,17 @@ public sealed partial class MainForm
                 CancelHotkeyAssignment();
                 PublishWebState();
             };
-            core.NavigationCompleted += (_, e) => { if (e.IsSuccess) PublishWebState(); };
+            core.NavigationCompleted += async (_, e) =>
+            {
+                if (!e.IsSuccess) return;
+                PublishWebState();
+                try { await FitInitialWebWindowAsync(); }
+                catch (Exception) { /* Retain the default size if the page closes during measurement. */ }
+            };
             foreach (Control control in Controls) control.Visible = false;
             Controls.Add(webUi);
             webUi.BringToFront();
-            ClientSize = new Size(1000, 740);
+            ClientSize = new Size(1000, 900);
             MinimumSize = new Size(720, 680);
             core.Navigate("https://programmic.local/index.html");
             webStateTimer.Tick += (_, _) => { PublishWebState(); RefreshDevUi(); };
