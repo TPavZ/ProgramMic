@@ -34,6 +34,7 @@ document.addEventListener('pointerdown',e=>{
 $('hotkey').addEventListener('click',()=>send($('hotkey').getAttribute('aria-pressed')==='true'?'cancelHotkey':'assignHotkey'));
 $('micHotkey').addEventListener('click',()=>send($('micHotkey').getAttribute('aria-pressed')==='true'?'cancelHotkey':'assignMicHotkey'));
 let soundLibrarySignature='';
+let selectedPadId=null;
 function renderSoundboard(s){
  if(document.activeElement!==$('soundMaster'))$('soundMaster').value=s.soundVolume??100;
  $('soundMasterValue').value=`${s.soundVolume??100}%`;
@@ -42,17 +43,32 @@ function renderSoundboard(s){
  if(signature!==soundLibrarySignature){
   soundLibrarySignature=signature;
   const list=$('soundClips');list.replaceChildren();
-  if(!clips.length){const empty=document.createElement('p');empty.className='soundboard-empty';empty.textContent='Your sounds go here. Add a clip to get started.';list.append(empty);}
-  for(const clip of clips){
-   const card=document.createElement('section');card.className='sound-clip';card.dataset.clip=clip.id;
+  const grid=document.createElement('div');grid.className='pads-grid';list.append(grid);
+  const padCount=Math.max(12,Math.ceil((Math.max(-1,...clips.map(c=>c.pad))+2)/12)*12);
+  for(let pad=0;pad<Math.min(108,padCount);pad++){
+   const clip=clips.find(c=>c.pad===pad);
+   const card=document.createElement('div');card.className='pad-cell';if(clip)card.dataset.clip=clip.id;
+   const play=document.createElement('button');play.className=clip?'sound-pad assigned':'sound-pad empty';
+   const number=document.createElement('span');number.className='pad-number';number.textContent=String(pad+1).padStart(2,'0');
+   const symbol=document.createElement('span');symbol.className='pad-symbol';symbol.textContent=clip?'▶':'+';
+   const title=document.createElement('span');title.className='pad-name';title.textContent=clip?clip.name:'Assign Sound';
+   play.append(number,symbol,title);play.setAttribute('aria-label',clip?`Play ${clip.name}`:`Assign sound to pad ${pad+1}`);
+   play.addEventListener('click',()=>send(clip?'soundPlay':'soundImport',clip?{id:clip.id}:{pad}));card.append(play);
+   if(clip){const edit=document.createElement('button');edit.className='pad-edit';edit.textContent='⋯';edit.setAttribute('aria-label',`Edit pad ${pad+1}: ${clip.name}`);edit.addEventListener('click',()=>{selectedPadId=selectedPadId===clip.id?null:clip.id;soundLibrarySignature='';renderSoundboard(s);});card.append(edit);}
+   grid.append(card);
+  }
+  const clip=clips.find(c=>c.id===selectedPadId);
+  if(clip){
+   const card=document.createElement('section');card.className='sound-clip pad-editor';
+   const heading=document.createElement('h3');heading.textContent=`Pad ${String(clip.pad+1).padStart(2,'0')} Settings`;
    const name=document.createElement('input');name.type='text';name.value=clip.name;name.maxLength=60;name.setAttribute('aria-label','Sound name');name.addEventListener('change',()=>send('soundRename',{id:clip.id,name:name.value}));
    const row=document.createElement('div');row.className='sound-clip-actions';
-   const play=document.createElement('button');play.className='primary';play.textContent='▶ Play';play.setAttribute('aria-label',`Play ${clip.name}`);play.addEventListener('click',()=>send('soundPlay',{id:clip.id}));
+   const replace=document.createElement('button');replace.className='secondary';replace.textContent='Change Sound';replace.addEventListener('click',()=>send('soundImport',{id:clip.id}));
    const remove=document.createElement('button');remove.className='secondary';remove.textContent='Remove';remove.setAttribute('aria-label',`Remove ${clip.name}`);remove.addEventListener('click',()=>{if(window.confirm(`Remove "${clip.name}" from your soundboard?`))send('soundRemove',{id:clip.id});});
-   row.append(play,remove);
+   row.append(replace,remove);
    const label=document.createElement('label');label.textContent=`Clip volume: ${clip.volume}%`;
    const volume=document.createElement('input');volume.type='range';volume.min=0;volume.max=100;volume.value=clip.volume;volume.setAttribute('aria-label',`${clip.name} volume`);volume.addEventListener('input',()=>label.textContent=`Clip volume: ${volume.value}%`);volume.addEventListener('change',()=>send('soundVolume',{id:clip.id,value:Number(volume.value)}));
-   card.append(name,row,label,volume);list.append(card);
+   card.append(heading,name,row,label,volume);list.append(card);
   }
  }
  for(const card of $('soundClips').querySelectorAll('[data-clip]'))card.classList.toggle('playing',(s.soundPlaying??[]).includes(card.dataset.clip));

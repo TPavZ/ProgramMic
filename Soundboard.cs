@@ -13,6 +13,7 @@ public sealed partial class MainForm
         public string Name { get; set; } = "Sound";
         public string FileName { get; set; } = "";
         public int Volume { get; set; } = 100;
+        public int Pad { get; set; } = -1;
     }
     private sealed class SoundboardSettings
     {
@@ -36,6 +37,15 @@ public sealed partial class MainForm
             soundboardSettings.Volume = Math.Clamp(soundboardSettings.Volume, 0, 100);
             soundboardSettings.Clips = soundboardSettings.Clips.Where(c => !string.IsNullOrWhiteSpace(c.Id) && c.FileName == Path.GetFileName(c.FileName)).Take(100).ToList();
             foreach (var clip in soundboardSettings.Clips) clip.Volume = Math.Clamp(clip.Volume, 0, 100);
+            var usedPads = new HashSet<int>();
+            foreach (var clip in soundboardSettings.Clips)
+            {
+                if (clip.Pad < 0 || clip.Pad >= 108 || !usedPads.Add(clip.Pad))
+                {
+                    clip.Pad = Enumerable.Range(0, 108).First(p => !usedPads.Contains(p));
+                    usedPads.Add(clip.Pad);
+                }
+            }
             soundboard.Gain = soundboardSettings.Volume / 100f;
         }
         catch { soundboardSettings = new(); }
@@ -73,17 +83,28 @@ public sealed partial class MainForm
     {
         if (command == "soundImport")
         {
-            if (soundboardSettings.Clips.Count >= 100) throw new InvalidOperationException("Your soundboard can hold up to 100 clips.");
+            var replaceId = root.TryGetProperty("id", out var idProperty) ? idProperty.GetString() : null;
+            var replacement = soundboardSettings.Clips.FirstOrDefault(c => c.Id == replaceId);
+            if (replacement is null && soundboardSettings.Clips.Count >= 100) throw new InvalidOperationException("Your soundboard can hold up to 100 clips.");
+            int pad = replacement?.Pad ?? (root.TryGetProperty("pad", out var padProperty) ? padProperty.GetInt32() : Enumerable.Range(0, 108).First(p => soundboardSettings.Clips.All(c => c.Pad != p)));
+            if (pad < 0 || pad >= 108 || soundboardSettings.Clips.Any(c => c.Pad == pad && c != replacement)) throw new InvalidOperationException("That pad is already assigned.");
             using var dialog = new OpenFileDialog { Title = "Add a soundboard clip", Filter = "Audio clips|*.wav;*.mp3;*.aiff;*.aif;*.wma;*.m4a|All files|*.*", RestoreDirectory = true };
             if (dialog.ShowDialog(this) != DialogResult.OK) return;
             if (new FileInfo(dialog.FileName).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
             await Task.Run(() => DecodeClip(dialog.FileName));
-            var clip = new SoundClip { Name = Path.GetFileNameWithoutExtension(dialog.FileName) };
+            var clip = new SoundClip { Name = Path.GetFileNameWithoutExtension(dialog.FileName), Pad = pad, Volume = replacement?.Volume ?? 100 };
             clip.FileName = clip.Id + Path.GetExtension(dialog.FileName).ToLowerInvariant();
             Directory.CreateDirectory(SoundboardFolder);
             File.Copy(dialog.FileName, Path.Combine(SoundboardFolder, clip.FileName));
+            if (replacement is not null)
+            {
+                soundboard.Stop(replacement.Id);
+                soundCache.Remove(replacement.Id);
+                soundboardSettings.Clips.Remove(replacement);
+            }
             soundboardSettings.Clips.Add(clip);
             SaveSoundboard();
+            if (replacement is not null) File.Delete(Path.Combine(SoundboardFolder, replacement.FileName));
             return;
         }
         if (command == "soundStop") { soundPlaybackEpoch++; soundboard.StopAll(); return; }
