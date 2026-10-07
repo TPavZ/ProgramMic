@@ -33,3 +33,6 @@ The installer script consumes `publish/`. It does not yet install or verify WebV
 The C# development build is checked at this milestone. Live audio routing, hotkey registration, WebView2 rendering and driver/device changes still require Windows end-to-end testing with VB-CABLE. The HTML can also be opened in a browser as a disabled design preview.
 
 Next: review the layout, agree on additional v2 features, test mute and device switching with real audio, then finish runtime detection and installer validation. The v1 README and release remain preserved.
+
+## Continuous microphone routing
+Microphone-to-VB-CABLE routing starts independently of the selected application. Activate adds application audio; Deactivate only mutes that application contribution. Microphone mute remains independent. Switching application sources or losing their capture does not stop the microphone. Changing audio devices still requires restarting the device streams. Real-device listening verification remains required.

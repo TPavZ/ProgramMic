@@ -188,6 +188,14 @@ public sealed partial class MainForm
                     ComboBox? box = target switch { "process" => processBox, "microphone" => micBox, "output" => outputBox, _ => null };
                     int index = root.GetProperty("value").GetInt32();
                     if (box is null || index < 0 || index >= box.Items.Count) break;
+                    if (box == processBox)
+                    {
+                        restartingEngine = true;
+                        try { box.SelectedIndex = index; }
+                        finally { restartingEngine = false; }
+                        await ChangeProgramSourceAsync();
+                        break;
+                    }
                     // Hold restart ownership while changing selection to avoid overlapping async event handlers.
                     restartingEngine = true;
                     try { StopEngine(); box.SelectedIndex = index; }

@@ -356,7 +356,7 @@ Controls.Add(root);
         LoadProcesses();
         LoadSettings();
 
-        processBox.SelectedIndexChanged+=async(_,_)=>{SaveSettings();await RestartEngineForSelectionChangeAsync();};
+        processBox.SelectedIndexChanged+=async(_,_)=>{SaveSettings();await ChangeProgramSourceAsync();};
         micBox.SelectedIndexChanged+=async(_,_)=>{SaveSettings();await RestartEngineForSelectionChangeAsync();};
         outputBox.SelectedIndexChanged+=async(_,_)=>{SaveSettings();await RestartEngineForSelectionChangeAsync();};
 
@@ -613,7 +613,7 @@ Controls.Add(root);
     private async Task EnsureEngineRunningAsync()
     {
         if (running || restartingEngine || closing) return;
-        if (processBox.SelectedItem is null || micBox.SelectedItem is null || outputBox.SelectedItem is null) return;
+        if (micBox.SelectedItem is null || outputBox.SelectedItem is null) return;
         await StartEngineAsync();
     }
 
@@ -633,7 +633,7 @@ Controls.Add(root);
     private async Task StartEngineAsync()
     {
         if(!OperatingSystem.IsWindowsVersionAtLeast(10,0,19041)){MessageBox.Show("Program capture requires Windows 10 build 19041 or newer.");return;}
-        if(processBox.SelectedItem is not ProcessItem proc){MessageBox.Show("Select a program first.");return;}
+
         if(micBox.SelectedItem is not DeviceItem mic){MessageBox.Show("Select your regular microphone.");return;}
         if(outputBox.SelectedItem is not DeviceItem output){MessageBox.Show("Select CABLE Input. If it is missing, enable/install VB-CABLE.");return;}
         try
@@ -644,9 +644,8 @@ Controls.Add(root);
             player=new WasapiPlayerBuilder().WithDevice(output.Device).WithEventSync().Build(); player.Init(mixer); player.Play();
             micRecorder=new WasapiRecorderBuilder().WithDevice(mic.Device).WithSharedMode().WithEventSync().WithBufferLength(50).WithFormat(AudioFormat).Build();
             micRecorder.DataAvailable+=MicData; micRecorder.RecordingStopped+=Stopped; micRecorder.StartRecording();
-            programRecorder=await new WasapiRecorderBuilder().WithProcessLoopback((uint)proc.Pid,ProcessLoopbackMode.IncludeTargetProcessTree).WithEventSync().WithBufferLength(50).WithFormat(AudioFormat).BuildAsync();
-            programRecorder.DataAvailable+=ProgramData; programRecorder.RecordingStopped+=Stopped; programRecorder.StartRecording();
-            running=true; programEnabled=false; UpdateGains(); UpdateUi(proc.DisplayName);
+            running=true; programEnabled=false; UpdateGains(); UpdateUi("Microphone");
+            await Task.CompletedTask;
         }
         catch(Exception ex){StopEngine();MessageBox.Show("Could not start ProgramMic.\r\n\r\n"+ex.Message,"ProgramMic",MessageBoxButtons.OK,MessageBoxIcon.Error);}
         finally{}
@@ -655,9 +654,16 @@ Controls.Add(root);
     private void MicData(ReadOnlySpan<byte> data,AudioClientBufferFlags flags,long pos,long qpc)=>WritePacket(micBuffer,data,flags);
     private void ProgramData(ReadOnlySpan<byte> data,AudioClientBufferFlags flags,long pos,long qpc)=>WritePacket(programBuffer,data,flags);
     private static void WritePacket(BufferedWaveProvider? b,ReadOnlySpan<byte> data,AudioClientBufferFlags flags){if(b==null||data.Length==0)return;if((flags&AudioClientBufferFlags.Silent)!=0)b.AddSamples(new byte[data.Length]);else b.AddSamples(data);}
-    private void Stopped(object? sender,StoppedEventArgs e){if(e.Exception==null||closing)return;try{BeginInvoke(()=>{if(running){MessageBox.Show("Audio capture stopped:\r\n\r\n"+e.Exception.Message);StopEngine();}});}catch{}}
+    private void Stopped(object? sender,StoppedEventArgs e)
+    {
+        if(closing)return;
+        try { BeginInvoke(()=> {
+            if(ReferenceEquals(sender,programRecorder)) { StopProgramCapture(); PublishWebState(); return; }
+            if(e.Exception is not null && ReferenceEquals(sender,micRecorder) && running) { StopEngine(); MessageBox.Show("Microphone capture stopped:\n\n"+e.Exception.Message); }
+        }); } catch { }
+    }
 
-    private void ToggleProgram(){if(!running)return;programEnabled=!programEnabled;programBuffer?.ClearBuffer();UpdateGains();UpdateToggleUi();}
+    private async void ToggleProgram() => await ToggleProgramAudioAsync();
     private void UpdateGains(){if(mixer==null)return;mixer.MicGain=micMuted?0f:micVolume.Value/100f;mixer.ProgramGain=programEnabled?programVolume.Value/100f:0f;mixer.MasterGain=masterVolume.Value/100f;}
     private void UpdateUi(string proc)
     {
@@ -680,6 +686,7 @@ Controls.Add(root);
 
     private void StopEngine()
     {
+        engineEpoch++;
         running=false;programEnabled=false;
         try{if(programRecorder!=null){programRecorder.DataAvailable-=ProgramData;programRecorder.RecordingStopped-=Stopped;programRecorder.StopRecording();programRecorder.Dispose();}}catch{} programRecorder=null;
         try{if(micRecorder!=null){micRecorder.DataAvailable-=MicData;micRecorder.RecordingStopped-=Stopped;micRecorder.StopRecording();micRecorder.Dispose();}}catch{} micRecorder=null;
