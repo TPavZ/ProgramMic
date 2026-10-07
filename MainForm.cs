@@ -687,6 +687,7 @@ Controls.Add(root);
 
     private void StopEngine()
     {
+        StopSoundPreview();
         soundboard.StopAll();
         soundPlaybackEpoch++;
         engineEpoch++;

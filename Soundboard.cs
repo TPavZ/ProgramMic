@@ -26,6 +26,34 @@ public sealed partial class MainForm
     private readonly Dictionary<string, float[]> soundCache = new();
     private int soundPlaybackEpoch;
     private string? pendingSoundFile;
+    private float[]? pendingSoundAudio;
+    private WaveOut? soundPreviewOutput;
+    private RawSourceWaveStream? soundPreviewStream;
+
+    private void StopSoundPreview()
+    {
+        soundPreviewOutput?.Stop();
+        soundPreviewOutput?.Dispose(); soundPreviewOutput = null;
+        soundPreviewStream?.Dispose(); soundPreviewStream = null;
+    }
+
+    private static float[] TrimSound(float[] audio, double start, double end)
+    {
+        double duration = audio.Length / 96000d;
+        if (!double.IsFinite(start) || !double.IsFinite(end) || start < 0 || end > duration + .001 || end <= start)
+            throw new InvalidOperationException("Choose an end time after the start time, within this clip.");
+        int first = Math.Clamp((int)Math.Round(start * 48000), 0, audio.Length / 2) * 2;
+        int last = Math.Clamp((int)Math.Round(end * 48000), 0, audio.Length / 2) * 2;
+        if (last <= first) throw new InvalidOperationException("Select a longer portion of the clip.");
+        return audio[first..last];
+    }
+
+    private static float[] TrimSoundForSave(float[] audio, double start, double end)
+    {
+        if (end - start > 35.0000001)
+            throw new InvalidOperationException("Soundboard clips must be 35 seconds or less. Shorten your selection before saving.");
+        return TrimSound(audio, start, end);
+    }
     private static readonly string[] PadColors = ["#FAEDCB", "#C9E4DE", "#C6DEF1", "#DBCDF0", "#F2C6DE", "#F7D9C4"];
     private static string SoundboardFolder => Path.Combine(SettingsDirectory, "Soundboard");
     private static string SoundboardSettingsPath => Path.Combine(SoundboardFolder, "library.json");
@@ -86,21 +114,40 @@ public sealed partial class MainForm
 
     private async Task HandleSoundboardCommandAsync(JsonElement root, string command)
     {
-        if (command == "soundCancel") { pendingSoundFile = null; return; }
+        if (command == "soundPreviewStop") { StopSoundPreview(); return; }
+        if (command == "soundPreview")
+        {
+            if (pendingSoundAudio is null) return;
+            StopSoundPreview();
+            var previewSamples = TrimSound(pendingSoundAudio, root.GetProperty("start").GetDouble(), root.GetProperty("end").GetDouble());
+            soundPreviewStream = new RawSourceWaveStream(new MemoryStream(MemoryMarshal.AsBytes(previewSamples.AsSpan()).ToArray()), WaveFormat.CreateIeeeFloatWaveFormat(48000, 2));
+            soundPreviewOutput = new WaveOut();
+            soundPreviewOutput.Init(soundPreviewStream);
+            soundPreviewOutput.Volume = Math.Clamp(root.GetProperty("value").GetInt32(), 0, 100) / 100f;
+            soundPreviewOutput.Play();
+            return;
+        }
+        if (command == "soundCancel") { StopSoundPreview(); pendingSoundFile = null; pendingSoundAudio = null; return; }
         if (command == "soundBrowse")
         {
             using var dialog = new OpenFileDialog { Title = "Choose a sound", Filter = "Audio clips|*.wav;*.mp3;*.aiff;*.aif;*.wma;*.m4a|All files|*.*", RestoreDirectory = true };
             if (dialog.ShowDialog(this) != DialogResult.OK) return;
             if (new FileInfo(dialog.FileName).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
-            await Task.Run(() => DecodeClip(dialog.FileName));
+            StopSoundPreview();
+            var decoded = await Task.Run(() => DecodeClip(dialog.FileName));
             pendingSoundFile = dialog.FileName;
-            webUi?.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "soundFile", file = Path.GetFileName(pendingSoundFile), name = Path.GetFileNameWithoutExtension(pendingSoundFile) }));
+            pendingSoundAudio = decoded;
+            var peaks = new float[160];
+            for (int i = 0; i < peaks.Length; i++)
+                for (int j = i * decoded.Length / peaks.Length; j < (i + 1) * decoded.Length / peaks.Length; j++)
+                    peaks[i] = Math.Max(peaks[i], Math.Min(1, Math.Abs(decoded[j])));
+            webUi?.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "soundFile", file = Path.GetFileName(pendingSoundFile), name = Path.GetFileNameWithoutExtension(pendingSoundFile), duration = decoded.Length / 96000d, peaks }));
             return;
         }
         if (command == "soundImport")
         {
             var source = pendingSoundFile;
-            if (source is null || !File.Exists(source)) throw new InvalidOperationException("Choose an audio file first.");
+            if (source is null || pendingSoundAudio is null) throw new InvalidOperationException("Choose an audio file first.");
             var name = root.GetProperty("name").GetString()?.Trim();
             if (string.IsNullOrEmpty(name) || name.Length > 60) throw new InvalidOperationException("Enter a sound name between 1 and 60 characters.");
             int volume = Math.Clamp(root.GetProperty("value").GetInt32(), 0, 100);
@@ -109,12 +156,13 @@ public sealed partial class MainForm
             if (replacement is null && soundboardSettings.Clips.Count >= 100) throw new InvalidOperationException("Your soundboard can hold up to 100 clips.");
             int pad = replacement?.Pad ?? (root.TryGetProperty("pad", out var padProperty) ? padProperty.GetInt32() : Enumerable.Range(0, 108).First(p => soundboardSettings.Clips.All(c => c.Pad != p)));
             if (pad < 0 || pad >= 108 || soundboardSettings.Clips.Any(c => c.Pad == pad && c != replacement)) throw new InvalidOperationException("That pad is already assigned.");
-            if (new FileInfo(source).Length > 50 * 1024 * 1024) throw new InvalidOperationException("Use a file smaller than 50 MB.");
-            await Task.Run(() => DecodeClip(source));
+            StopSoundPreview();
+            var trimmed = TrimSoundForSave(pendingSoundAudio, root.GetProperty("start").GetDouble(), root.GetProperty("end").GetDouble());
             var clip = new SoundClip { Name = name, Pad = pad, Volume = volume, Color = PadColors[Random.Shared.Next(PadColors.Length)] };
-            clip.FileName = clip.Id + Path.GetExtension(source).ToLowerInvariant();
+            clip.FileName = clip.Id + ".wav";
             Directory.CreateDirectory(SoundboardFolder);
-            File.Copy(source, Path.Combine(SoundboardFolder, clip.FileName));
+            using (var writer = new WaveFileWriter(Path.Combine(SoundboardFolder, clip.FileName), WaveFormat.CreateIeeeFloatWaveFormat(48000, 2)))
+                writer.Write(MemoryMarshal.AsBytes(trimmed.AsSpan()));
             if (replacement is not null)
             {
                 soundboard.Stop(replacement.Id);
@@ -125,6 +173,7 @@ public sealed partial class MainForm
             SaveSoundboard();
             if (replacement is not null) File.Delete(Path.Combine(SoundboardFolder, replacement.FileName));
             pendingSoundFile = null;
+            pendingSoundAudio = null;
             webUi?.CoreWebView2.PostWebMessageAsJson("{\"type\":\"soundSaved\"}");
             return;
         }

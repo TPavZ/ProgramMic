@@ -206,6 +206,7 @@ public sealed partial class MainForm
             assigningMicHotkey, micHotkey = micHotkeyKey == Keys.None ? "Not assigned" : micHotkeyKey.ToString(),
             soundClips = soundboardSettings.Clips.Select(c => new { id = c.Id, name = c.Name, volume = c.Volume, pad = c.Pad, color = c.Color }).ToArray(),
             soundVolume = soundboardSettings.Volume, soundPlaying = soundboard.Playing,
+            soundPreviewPlaying = soundPreviewOutput?.PlaybackState == NAudio.Wave.PlaybackState.Playing,
             processes = Options(processBox), microphones = Options(micBox), outputs = Options(outputBox),
             process = processBox.SelectedIndex, microphone = micBox.SelectedIndex, output = outputBox.SelectedIndex,
             programVolume = programVolume.Value, micVolume = micVolume.Value, masterVolume = masterVolume.Value
@@ -234,7 +235,7 @@ public sealed partial class MainForm
             var root = doc.RootElement;
             var command = root.GetProperty("command").GetString();
             webBusy = true;
-            if (command is "soundBrowse" or "soundCancel" or "soundImport" or "soundPlay" or "soundStop" or "soundMaster" or "soundRename" or "soundVolume" or "soundRemove")
+            if (command is "soundPreview" or "soundPreviewStop" or "soundBrowse" or "soundCancel" or "soundImport" or "soundPlay" or "soundStop" or "soundMaster" or "soundRename" or "soundVolume" or "soundRemove")
             {
                 PublishWebState();
                 await HandleSoundboardCommandAsync(root, command);

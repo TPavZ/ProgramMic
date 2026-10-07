@@ -24,6 +24,7 @@ function render(s){
  $('micHotkey').setAttribute('aria-pressed',Boolean(s.assigningMicHotkey));
  renderSoundboard(s);
  updateSoundUpload(s.busy);
+ previewPlaying=Boolean(s.soundPreviewPlaying);$('uploadPreviewPlay').textContent=previewPlaying?'■ Stop':'▶ Preview';
 }
 for(const id of ['process','microphone','output'])$(id).addEventListener('change',()=>send('select',{target:id,value:Number($(id).value)}));
 for(const [id,target,label] of [['programVolume','program','programValue'],['micVolume','microphone','micValue'],['masterVolume','output','masterValue']]){ $(id).addEventListener('input',()=>$(label).value=`${$(id).value}%`);$(id).addEventListener('change',()=>send('volume',{target,value:Number($(id).value)})); }
@@ -90,20 +91,36 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Escape'){e.preventDefault();setSoundboardOpen(false);}
 });
 let uploadTarget=null,uploadHasFile=false,uploadBusy=false,uploadOpener=null;
+let uploadDuration=0,previewPlaying=false;
+function trimSelection(){return {start:Number($('uploadStart').value),end:Number($('uploadEnd').value)};}
+function updateTrim(){
+ const {start,end}=trimSelection();
+ $('uploadStartValue').value=`${start.toFixed(2)}s`;$('uploadEndValue').value=`${end.toFixed(2)}s`;
+ $('uploadLength').textContent=`${(end-start).toFixed(2)}s selected`;
+ $('uploadTrimError').hidden=end-start<=35.0000001;
+ const x=uploadDuration?start/uploadDuration*400:0,w=uploadDuration?(end-start)/uploadDuration*400:400;
+ $('trimHighlight').setAttribute('x',x);$('trimHighlight').setAttribute('width',w);
+ $('trimStartLine').setAttribute('x1',x);$('trimStartLine').setAttribute('x2',x);
+ $('trimEndLine').setAttribute('x1',x+w);$('trimEndLine').setAttribute('x2',x+w);
+}
 function updateSoundUpload(busy=uploadBusy){
  uploadBusy=busy;
- $('uploadSave').disabled=busy||!uploadHasFile||!$('uploadName').value.trim();
+ const {start,end}=trimSelection();
+ $('uploadSave').disabled=busy||!uploadHasFile||!$('uploadName').value.trim()||end<=start||end-start>35.0000001;
+ $('uploadPreviewPlay').disabled=busy||!uploadHasFile;
  $('uploadBrowse').disabled=busy;
  $('uploadCancel').disabled=busy;$('uploadClose').disabled=busy;
  $('uploadSave').textContent=busy?'Please wait…':uploadTarget?.id?'Save Sound':'Add Sound';
 }
 function openSoundUpload(target,opener){
  uploadTarget=target;uploadHasFile=false;uploadOpener=opener;
+ $('uploadPreview').hidden=true;uploadDuration=0;previewPlaying=false;
  $('uploadFile').textContent='Choose a file';$('uploadName').value=target.name??'';
  $('uploadVolume').value=target.volume??100;$('uploadVolumeValue').value=`${$('uploadVolume').value}%`;
  updateSoundUpload(false);send('soundCancel');$('soundUpload').showModal();$('uploadBrowse').focus();
 }
 function closeSoundUpload(){
+ send('soundPreviewStop');
  $('soundUpload').close();uploadTarget=null;uploadHasFile=false;
  if(uploadOpener?.isConnected)uploadOpener.focus();else $('soundboardClose').focus();
 }
@@ -112,10 +129,28 @@ $('soundUpload').addEventListener('cancel',e=>{e.preventDefault();if(!uploadBusy
 $('uploadBrowse').addEventListener('click',()=>{updateSoundUpload(true);send('soundBrowse');});
 $('uploadName').addEventListener('input',()=>updateSoundUpload());
 $('uploadVolume').addEventListener('input',()=>$('uploadVolumeValue').value=`${$('uploadVolume').value}%`);
-$('uploadForm').addEventListener('submit',e=>{e.preventDefault();if($('uploadSave').disabled)return;updateSoundUpload(true);send('soundImport',{...uploadTarget,name:$('uploadName').value.trim(),value:Number($('uploadVolume').value)});});
+for(const id of ['uploadStart','uploadEnd']){
+ $(id).addEventListener('input',()=>{
+  const gap=Math.min(.01,uploadDuration),{start,end}=trimSelection();
+  if(id==='uploadStart'&&start>=end)$('uploadStart').value=Math.max(0,end-gap);
+  if(id==='uploadEnd'&&end<=start)$('uploadEnd').value=Math.min(uploadDuration,start+gap);
+  updateTrim();updateSoundUpload();
+ });
+ $(id).addEventListener('change',()=>send('soundPreviewStop'));
+}
+$('uploadPreviewPlay').addEventListener('click',()=>send(previewPlaying?'soundPreviewStop':'soundPreview',{...trimSelection(),value:Number($('uploadVolume').value)}));
+$('uploadForm').addEventListener('submit',e=>{e.preventDefault();if($('uploadSave').disabled)return;updateSoundUpload(true);send('soundImport',{...uploadTarget,...trimSelection(),name:$('uploadName').value.trim(),value:Number($('uploadVolume').value)});});
 if(bridge){bridge.addEventListener('message',e=>{
  if(e.data.type==='state')render(e.data);
- if(e.data.type==='soundFile'&&$('soundUpload').open){uploadHasFile=true;$('uploadFile').textContent=e.data.file;if(!$('uploadName').value.trim())$('uploadName').value=e.data.name.slice(0,60);updateSoundUpload(false);}
+ if(e.data.type==='soundFile'&&$('soundUpload').open){
+  uploadHasFile=true;uploadDuration=e.data.duration;$('uploadFile').textContent=e.data.file;
+  if(!$('uploadName').value.trim())$('uploadName').value=e.data.name.slice(0,60);
+  for(const id of ['uploadStart','uploadEnd'])$(id).max=uploadDuration;
+  $('uploadStart').value=0;$('uploadEnd').value=uploadDuration;
+  const peaks=e.data.peaks,max=Math.max(.01,...peaks);
+  $('wavePeaks').setAttribute('d',peaks.map((p,i)=>{const h=Math.max(1,p/max*32),x=(i+.5)*400/peaks.length;return `M${x} ${40-h}V${40+h}`;}).join(''));
+  $('uploadPreview').hidden=false;updateTrim();updateSoundUpload(false);
+ }
  if(e.data.type==='soundSaved')closeSoundUpload();
 });send('ready');}
 else{$('status').textContent='Design preview — open ProgramMic to connect audio';for(const el of document.querySelectorAll('button:not([data-local]),select,input'))el.disabled=true;}
