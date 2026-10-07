@@ -28,4 +28,4 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 
 .activation-controls>#muteMic{width:100%}
 
-#muteMic{display:flex;align-items:center;justify-content:center;gap:8px}.mic-icon{width:20px;height:20px;flex-shrink:0}#muteMic[aria-pressed="true"] .mic-icon{color:#ef4444}.mic-slash{stroke-width:2.5}
+#muteMic{display:grid;grid-template-columns:20px 60px;align-items:center;justify-content:center;column-gap:8px}#muteMic>span{text-align:left}.mic-icon{width:20px;height:20px;flex-shrink:0}#muteMic[aria-pressed="true"] .mic-icon{color:#ef4444}.mic-slash{stroke-width:2.5}
