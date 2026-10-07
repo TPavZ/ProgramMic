@@ -8,7 +8,7 @@ function render(s){
  for(const [id,value,label] of [['programVolume',s.programVolume,'programValue'],['micVolume',s.micVolume,'micValue'],['masterVolume',s.masterVolume,'masterValue']]){if(document.activeElement!==$(id))$(id).value=value;$(label).value=`${value}%`;}
  $('toggle').textContent=s.programEnabled?'Deactivate':'Activate';$('toggle').setAttribute('aria-pressed',s.programEnabled);
  $('muteMic').textContent=s.micMuted?'Unmute microphone':'Mute microphone';$('muteMic').setAttribute('aria-pressed',s.micMuted);
- $('status').textContent=s.status.replace(/^●\s*/, '');$('dot').classList.toggle('live',s.running);
+ $('status').textContent=s.programEnabled?'Routing Active':'Routing Inactive';$('dot').classList.toggle('live',s.programEnabled);
  for(const el of document.querySelectorAll('button,select,input'))el.disabled=s.busy;
  $('hotkeyValue').textContent=s.hotkey;
  $('hotkey').textContent=s.assigningHotkey?'Press any key…':'Assign Hotkey';
