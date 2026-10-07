@@ -61,9 +61,11 @@ function renderSoundboard(s){
    const title=document.createElement('span');title.className='pad-name';title.textContent=clip?clip.name:'Assign Sound';
    if(!clip)play.append(symbol);play.append(title);play.setAttribute('aria-label',clip?`Play ${clip.name}`:`Assign sound to pad ${pad+1}`);
    play.addEventListener('click',()=>clip?send('soundPlay',{id:clip.id}):openSoundUpload({pad},play));card.append(play);
-   if(clip?.hotkey&&clip.hotkey!=='Not assigned'){
-    const keycap=document.createElement('span');keycap.className='pad-keycap';keycap.textContent=clip.hotkey;
-    keycap.setAttribute('aria-label',`Hotkey ${clip.hotkey}`);card.append(keycap);
+   if(clip){
+    const assigned=Boolean(clip.hotkey&&clip.hotkey!=='Not assigned');
+    const keycap=document.createElement('span');keycap.className='pad-keycap';keycap.textContent=assigned?clip.hotkey:'—';
+    keycap.title=assigned?`Hotkey: ${clip.hotkey}`:'No hotkey assigned — use Edit to assign one';
+    keycap.setAttribute('aria-label',assigned?`Hotkey ${clip.hotkey}`:'No hotkey assigned');card.append(keycap);
    }
    if(clip){
     const edit=document.createElement('button');edit.className='pad-tool pad-pencil';edit.type='button';edit.setAttribute('aria-label',`Edit ${clip.name}`);
