@@ -11,3 +11,5 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 .section-heading .number{flex:0 0 24px}.card{padding:18px 22px}.card .volume{margin-top:12px}.card input[type=range]{margin-bottom:0}@media(max-width:520px){.section-heading h3{flex-basis:125px}.section-heading .number{flex-basis:20px}}
 
 #toggle[aria-pressed="true"]{background:#228b45;border-color:#228b45;color:#fff;box-shadow:none}
+
+.header-status{font-size:11px;color:var(--muted);text-align:right}.header-status>div{display:flex;align-items:center;justify-content:flex-end;gap:8px}
