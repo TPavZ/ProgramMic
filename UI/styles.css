@@ -13,3 +13,5 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 #toggle[aria-pressed="true"]{background:#228b45;border-color:#228b45;color:#fff;box-shadow:none}
 
 .header-status{font-size:11px;color:var(--muted);text-align:right}.header-status>div{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+
+.header-status #status{display:inline-block;width:100px;text-align:left}
