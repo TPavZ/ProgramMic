@@ -15,6 +15,7 @@ public sealed partial class MainForm
         public int Volume { get; set; } = 100;
         public int Pad { get; set; } = -1;
         public string Color { get; set; } = "";
+        public int Hotkey { get; set; }
     }
     private sealed class SoundboardSettings
     {
@@ -133,7 +134,10 @@ public sealed partial class MainForm
             soundPreviewOutput.Play();
             return;
         }
-        if (command == "soundCancel") { StopSoundPreview(); pendingSoundFile = null; pendingSoundAudio = null; return; }
+        if (command == "soundCancel") { CancelHotkeyAssignment(); StopSoundPreview(); pendingSoundFile = null; pendingSoundAudio = null; pendingSoundHotkey = Keys.None; pendingSoundEditId = null; return; }
+        if (command == "soundAssignHotkey") { if (assigningSoundHotkey) CancelHotkeyAssignment(); else BeginAssignSoundHotkey(); return; }
+        if (command == "soundHotkeySelect") { CompleteSoundHotkeySelection((Keys)root.GetProperty("key").GetInt32()); return; }
+        if (command == "soundClearHotkey") { CancelHotkeyAssignment(); pendingSoundHotkey = Keys.None; return; }
         if (command is "soundBrowse" or "soundEdit")
         {
             string sourcePath;
@@ -141,6 +145,8 @@ public sealed partial class MainForm
             {
                 var existing = soundboardSettings.Clips.FirstOrDefault(c => c.Id == root.GetProperty("id").GetString());
                 if (existing is null) return;
+                pendingSoundEditId = existing.Id;
+                pendingSoundHotkey = (Keys)existing.Hotkey;
                 sourcePath = Path.Combine(SoundboardFolder, existing.FileName);
             }
             else
@@ -168,6 +174,8 @@ public sealed partial class MainForm
             var name = root.GetProperty("name").GetString()?.Trim();
             if (string.IsNullOrEmpty(name) || name.Length > 60) throw new InvalidOperationException("Enter a sound name between 1 and 60 characters.");
             int volume = Math.Clamp(root.GetProperty("value").GetInt32(), 0, 100);
+            CancelHotkeyAssignment();
+            ValidateSoundHotkey(pendingSoundHotkey);
             var replaceId = root.TryGetProperty("id", out var idProperty) ? idProperty.GetString() : null;
             var replacement = soundboardSettings.Clips.FirstOrDefault(c => c.Id == replaceId);
             if (replacement is null && soundboardSettings.Clips.Count >= 100) throw new InvalidOperationException("Your soundboard can hold up to 100 clips.");
@@ -175,7 +183,7 @@ public sealed partial class MainForm
             if (pad < 0 || pad >= 108 || soundboardSettings.Clips.Any(c => c.Pad == pad && c != replacement)) throw new InvalidOperationException("That pad is already assigned.");
             StopSoundPreview();
             var trimmed = TrimSoundForSave(pendingSoundAudio, root.GetProperty("start").GetDouble(), root.GetProperty("end").GetDouble());
-            var clip = new SoundClip { Name = name, Pad = pad, Volume = volume, Color = replacement?.Color ?? PadColors[Random.Shared.Next(PadColors.Length)] };
+            var clip = new SoundClip { Name = name, Pad = pad, Volume = volume, Hotkey = (int)pendingSoundHotkey, Color = replacement?.Color ?? PadColors[Random.Shared.Next(PadColors.Length)] };
             clip.FileName = clip.Id + ".wav";
             Directory.CreateDirectory(SoundboardFolder);
             using (var writer = new WaveFileWriter(Path.Combine(SoundboardFolder, clip.FileName), WaveFormat.CreateIeeeFloatWaveFormat(48000, 2)))
@@ -188,6 +196,7 @@ public sealed partial class MainForm
             }
             soundboardSettings.Clips.Add(clip);
             SaveSoundboard();
+            RegisterSoundHotkeys(true);
             if (replacement is not null) File.Delete(Path.Combine(SoundboardFolder, replacement.FileName));
             pendingSoundFile = null;
             pendingSoundAudio = null;
@@ -231,7 +240,7 @@ public sealed partial class MainForm
                 soundboard.Stop(selected.Id);
                 File.Delete(Path.Combine(SoundboardFolder, selected.FileName));
                 soundCache.Remove(selected.Id);
-                soundboardSettings.Clips.Remove(selected); SaveSoundboard(); break;
+                soundboardSettings.Clips.Remove(selected); SaveSoundboard(); RegisterSoundHotkeys(); break;
         }
     }
 

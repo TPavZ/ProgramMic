@@ -50,7 +50,7 @@ public sealed partial class MainForm
     private void ShowDuplicateHotkeyError(Keys key)
     {
         MessageBox.Show(this,
-            $"{key} is already assigned to the other action.\n\nToggle ProgramMic and Toggle Microphone must use different keys. Your previous assignment has been kept.",
+            $"{key} is already assigned.\n\nEvery sound, Toggle ProgramMic, and Toggle Microphone must use a different key. Your previous assignment has been kept.",
             "Hotkey Already Assigned", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
@@ -74,6 +74,8 @@ public sealed partial class MainForm
 
     private void CancelHotkeyAssignment()
     {
+        bool restore = assigningSoundHotkey || assigningHotkey || assigningMicHotkey;
+        assigningSoundHotkey = false;
         if (assigningHotkey)
         {
             assigningHotkey = false;
@@ -84,12 +86,13 @@ public sealed partial class MainForm
             toggleButton.Enabled = true;
         }
         if (assigningMicHotkey) { assigningMicHotkey = false; RegisterMicHotkey(false); }
+        if (restore) RestoreAllHotkeys();
     }
 
     private void BeginAssignMicHotkey()
     {
         CancelHotkeyAssignment();
-        UnregisterHotKey(Handle, MIC_HOTKEY_ID);
+        ReleaseAllHotkeys();
         assigningMicHotkey = true;
         ActiveControl = null;
         Focus();
@@ -98,7 +101,7 @@ public sealed partial class MainForm
     private void CompleteMicHotkeySelection(Keys key)
     {
         if (!assigningMicHotkey || key is Keys.None or Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin) return;
-        if (key == hotkeyKey)
+        if (key == hotkeyKey || SoundHotkeyInUse(key))
         {
             CancelHotkeyAssignment();
             ShowDuplicateHotkeyError(key);
@@ -109,7 +112,7 @@ public sealed partial class MainForm
         micHotkeyKey = key;
         assigningMicHotkey = false;
         if (!RegisterMicHotkey(true)) { micHotkeyKey = oldKey; RegisterMicHotkey(false); }
-        SaveSettings(); PublishWebState();
+        RestoreAllHotkeys(); SaveSettings(); PublishWebState();
     }
 
     private void ToggleMicrophone() { micMuted = !micMuted; UpdateGains(); PublishWebState(); }
@@ -204,7 +207,8 @@ public sealed partial class MainForm
             type = "state", running, programEnabled, micMuted, assigningHotkey, busy = webBusy,
             status = statusLabel.Text, hotkey = HotkeyText(),
             assigningMicHotkey, micHotkey = micHotkeyKey == Keys.None ? "Not assigned" : micHotkeyKey.ToString(),
-            soundClips = soundboardSettings.Clips.Select(c => new { id = c.Id, name = c.Name, volume = c.Volume, pad = c.Pad, color = c.Color }).ToArray(),
+            soundClips = soundboardSettings.Clips.Select(c => new { id = c.Id, name = c.Name, volume = c.Volume, pad = c.Pad, color = c.Color, hotkey = c.Hotkey == 0 ? "Not assigned" : ((Keys)c.Hotkey).ToString() }).ToArray(),
+            assigningSoundHotkey, soundHotkey = pendingSoundHotkey == Keys.None ? "Not assigned" : pendingSoundHotkey.ToString(),
             soundVolume = soundboardSettings.Volume, soundPlaying = soundboard.Playing,
             soundPreviewPlaying = soundPreviewOutput?.PlaybackState == NAudio.Wave.PlaybackState.Playing,
             soundPreviewPosition = SoundPreviewPosition, soundPreviewEnd,
@@ -236,7 +240,7 @@ public sealed partial class MainForm
             var root = doc.RootElement;
             var command = root.GetProperty("command").GetString();
             webBusy = true;
-            if (command is "soundEdit" or "soundPreview" or "soundPreviewStop" or "soundBrowse" or "soundCancel" or "soundImport" or "soundPlay" or "soundStop" or "soundMaster" or "soundRename" or "soundVolume" or "soundRemove")
+            if (command is "soundHotkeySelect" or "soundAssignHotkey" or "soundClearHotkey" or "soundEdit" or "soundPreview" or "soundPreviewStop" or "soundBrowse" or "soundCancel" or "soundImport" or "soundPlay" or "soundStop" or "soundMaster" or "soundRename" or "soundVolume" or "soundRemove")
             {
                 PublishWebState();
                 await HandleSoundboardCommandAsync(root, command);
@@ -308,7 +312,7 @@ public sealed partial class MainForm
     private void CompleteHotkeySelection(Keys key)
     {
         if (!assigningHotkey || key is Keys.None or Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin) return;
-        if (key == micHotkeyKey)
+        if (key == micHotkeyKey || SoundHotkeyInUse(key))
         {
             CancelHotkeyAssignment();
             hotkeyLabel.Text = HotkeyText();
@@ -331,6 +335,6 @@ public sealed partial class MainForm
         hotkeyLabel.ForeColor = TextSecondary;
         setHotkeyButton.Text = "ASSIGN HOTKEY";
         toggleButton.Enabled = true;
-        UpdateToggleUi(); SaveSettings(); PublishWebState();
+        RestoreAllHotkeys(); UpdateToggleUi(); SaveSettings(); PublishWebState();
     }
 }

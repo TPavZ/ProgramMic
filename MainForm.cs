@@ -364,8 +364,8 @@ Controls.Add(root);
         refreshTimer.Tick+=(_,_)=>{ };
         refreshTimer.Start();
 
-        Shown+=async(_,_)=>{ValidateLoadedHotkeys();RegisterCurrentHotkey(false);RegisterMicHotkey(false);await EnsureEngineRunningAsync();};
-        FormClosing+=(_,_)=>{SaveSettings();closing=true;refreshTimer.Stop();StopEngine();UnregisterHotKey(Handle,HOTKEY_ID);UnregisterHotKey(Handle,MIC_HOTKEY_ID);};
+        Shown+=async(_,_)=>{ValidateLoadedHotkeys();RegisterCurrentHotkey(false);RegisterMicHotkey(false);RegisterSoundHotkeys(true);await EnsureEngineRunningAsync();};
+        FormClosing+=(_,_)=>{SaveSettings();closing=true;refreshTimer.Stop();StopEngine();ReleaseAllHotkeys();};
         Shown+=async(_,_)=>await InitializeWebUiAsync();
         LoadSoundboard();
         InitializeBackgroundMode();
@@ -704,7 +704,7 @@ Controls.Add(root);
 
         // Temporarily release the current global hotkey while waiting for the
         // replacement. The very next keyboard key pressed becomes the new hotkey.
-        UnregisterHotKey(Handle,HOTKEY_ID);
+        ReleaseAllHotkeys();
 
         hotkeyLabel.Text="PRESS ANY KEY...";
         hotkeyLabel.ForeColor=PinkBright;
@@ -719,6 +719,7 @@ Controls.Add(root);
     private bool RegisterCurrentHotkey(bool showError){if(!IsHandleCreated)return false;bool ok=RegisterHotKey(Handle,HOTKEY_ID,(uint)(hotkeyMods|Mods.NoRepeat),(uint)hotkeyKey);if(!ok&&showError)MessageBox.Show($"Windows could not register {HotkeyText()}. Another app may already use it.","ProgramMic Hotkey");return ok;}
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
+        if(assigningSoundHotkey) { CompleteSoundHotkeySelection(keyData & Keys.KeyCode); return true; }
         if(assigningMicHotkey)
         {
             CompleteMicHotkeySelection(keyData & Keys.KeyCode);
@@ -735,6 +736,7 @@ Controls.Add(root);
 
     protected override void WndProc(ref Message m)
     {
+        if(m.Msg==WM_HOTKEY && registeredSoundHotkeys.TryGetValue(m.WParam.ToInt32(),out var soundId)) { PlaySoundFromHotkey(soundId); return; }
         if(m.Msg==WM_HOTKEY && m.WParam.ToInt32()==MIC_HOTKEY_ID) { ToggleMicrophone(); return; }
         if(m.Msg==WM_HOTKEY && m.WParam.ToInt32()==HOTKEY_ID)
         {
