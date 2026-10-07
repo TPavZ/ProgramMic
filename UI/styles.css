@@ -15,3 +15,5 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 .header-status{font-size:11px;color:var(--muted);text-align:right}.header-status>div{display:flex;align-items:center;justify-content:flex-end;gap:8px}
 
 .header-status #status{display:inline-block;width:100px;text-align:left}
+
+.header-status #dot{background:#ef4444}.header-status #dot.live{background:#22c55e}
