@@ -11,7 +11,7 @@ function render(s){
  $('status').textContent=s.status.replace(/^●\s*/, '');$('dot').classList.toggle('live',s.running);
  for(const el of document.querySelectorAll('button,select,input'))el.disabled=s.busy;
  $('hotkeyValue').textContent=s.hotkey;
- $('hotkey').textContent=s.assigningHotkey?'Press any key…':'Assign hotkey';
+ $('hotkey').textContent=s.assigningHotkey?'Press any key…':'Assign Hotkey';
  $('hotkey').setAttribute('aria-pressed',Boolean(s.assigningHotkey));
 }
 for(const id of ['process','microphone','output'])$(id).addEventListener('change',()=>send('select',{target:id,value:Number($(id).value)}));
