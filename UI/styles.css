@@ -27,3 +27,10 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 .activation-controls{flex:1;min-width:0}.activation-controls>#toggle{width:100%}.activation-controls>.hotkey{justify-content:center;margin-top:12px;flex-wrap:wrap}.activation-controls>.hotkey button{flex:none}.mix-actions{align-items:flex-start}
 
 .activation-controls>#muteMic{width:100%}
+
+#toggle{position:relative;isolation:isolate;transition:background-color .28s ease,border-color .28s ease,color .28s ease,box-shadow .28s ease}
+#toggle[aria-pressed="true"]{animation:activation-glow .8s ease-out}
+#toggle[aria-pressed="true"]::after{content:"✦";position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:transparent;font-size:17px;line-height:1;text-shadow:-140px -7px 0 #dcfce7,-85px 9px 0 #fff,-35px -12px 0 #86efac,45px 11px 0 #dcfce7,100px -10px 0 #fff,145px 7px 0 #86efac;animation:activation-sparkles .75s ease-out both}
+@keyframes activation-glow{0%{box-shadow:0 0 0 0 #22c55e77}45%{box-shadow:0 0 20px 3px #22c55e55}100%{box-shadow:0 0 0 8px #22c55e00}}
+@keyframes activation-sparkles{0%{opacity:0;transform:scale(.65)}20%{opacity:1}65%{opacity:.85}100%{opacity:0;transform:scale(1.18) translateY(-9px)}}
+@media(prefers-reduced-motion:reduce){#toggle{transition:none}#toggle[aria-pressed="true"]{animation:none}#toggle[aria-pressed="true"]::after{display:none}}
