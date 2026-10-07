@@ -114,7 +114,6 @@ function syncPreviewPlayhead(s){
 function trimSelection(){return {start:Number($('uploadStart').value),end:Number($('uploadEnd').value)};}
 function updateTrim(){
  const {start,end}=trimSelection();
- $('uploadStartValue').value=`${start.toFixed(2)}s`;$('uploadEndValue').value=`${end.toFixed(2)}s`;
  $('uploadLength').textContent=`${(end-start).toFixed(2)}s selected`;
  $('uploadTrimError').hidden=end-start<=35.0000001;
  const x=uploadDuration?start/uploadDuration*400:0,w=uploadDuration?(end-start)/uploadDuration*400:400;
