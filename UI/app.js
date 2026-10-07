@@ -7,7 +7,13 @@ function render(s){
  options('process',s.processes,s.process);options('microphone',s.microphones,s.microphone);options('output',s.outputs,s.output);
  for(const [id,value,label] of [['programVolume',s.programVolume,'programValue'],['micVolume',s.micVolume,'micValue'],['masterVolume',s.masterVolume,'masterValue']]){if(document.activeElement!==$(id))$(id).value=value;$(label).value=`${value}%`;}
  $('toggle').textContent=s.programEnabled?'Deactivate':'Activate';$('toggle').setAttribute('aria-pressed',s.programEnabled);
- $('muteMic').textContent=s.micMuted?'Unmute microphone':'Mute microphone';$('muteMic').setAttribute('aria-pressed',s.micMuted);
+ const muteButton=$('muteMic');
+ if(muteButton.dataset.muted!==String(s.micMuted)){
+  muteButton.innerHTML='<svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>'+(s.micMuted?'<path class="mic-slash" d="M3 3l18 18"/>':'')+'</svg><span>'+(s.micMuted?'Unmute':'Mute')+'</span>';
+  muteButton.dataset.muted=String(s.micMuted);
+ }
+ muteButton.setAttribute('aria-pressed',s.micMuted);
+ muteButton.setAttribute('aria-label',s.micMuted?'Unmute microphone':'Mute microphone');
  $('status').textContent=s.programEnabled?'Routing Active':'Routing Inactive';$('dot').classList.toggle('live',s.programEnabled);
  for(const el of document.querySelectorAll('button,select,input'))el.disabled=s.busy;
  $('hotkeyValue').textContent=s.hotkey;

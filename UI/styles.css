@@ -27,3 +27,5 @@ header h1{line-height:1}header .eyebrow{margin-top:4px}
 .activation-controls{flex:1;min-width:0}.activation-controls>#toggle{width:100%}.activation-controls>.hotkey{justify-content:center;margin-top:12px;flex-wrap:wrap}.activation-controls>.hotkey button{flex:none}.mix-actions{align-items:flex-start}
 
 .activation-controls>#muteMic{width:100%}
+
+#muteMic{display:flex;align-items:center;justify-content:center;gap:8px}.mic-icon{width:20px;height:20px;flex-shrink:0}#muteMic[aria-pressed="true"] .mic-icon{color:#ef4444}.mic-slash{stroke-width:2.5}
