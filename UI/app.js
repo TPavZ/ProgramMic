@@ -6,7 +6,7 @@ function options(id,items,selected){const el=$(id);const signature=JSON.stringif
 function render(s){
  options('process',s.processes,s.process);options('microphone',s.microphones,s.microphone);options('output',s.outputs,s.output);
  for(const [id,value,label] of [['programVolume',s.programVolume,'programValue'],['micVolume',s.micVolume,'micValue'],['masterVolume',s.masterVolume,'masterValue']]){if(document.activeElement!==$(id))$(id).value=value;$(label).value=`${value}%`;}
- $('toggle').textContent=s.programEnabled?'Turn program audio off':'Activate';$('toggle').setAttribute('aria-pressed',s.programEnabled);
+ $('toggle').textContent=s.programEnabled?'Deactivate':'Activate';$('toggle').setAttribute('aria-pressed',s.programEnabled);
  $('muteMic').textContent=s.micMuted?'Unmute microphone':'Mute microphone';$('muteMic').setAttribute('aria-pressed',s.micMuted);
  $('status').textContent=s.status.replace(/^●\s*/, '');$('dot').classList.toggle('live',s.running);
  for(const el of document.querySelectorAll('button,select,input'))el.disabled=s.busy;
