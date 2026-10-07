@@ -367,6 +367,7 @@ Controls.Add(root);
         Shown+=async(_,_)=>{ValidateLoadedHotkeys();RegisterCurrentHotkey(false);RegisterMicHotkey(false);await EnsureEngineRunningAsync();};
         FormClosing+=(_,_)=>{SaveSettings();closing=true;refreshTimer.Stop();StopEngine();UnregisterHotKey(Handle,HOTKEY_ID);UnregisterHotKey(Handle,MIC_HOTKEY_ID);};
         Shown+=async(_,_)=>await InitializeWebUiAsync();
+        LoadSoundboard();
         InitializeBackgroundMode();
     }
 
@@ -640,7 +641,7 @@ Controls.Add(root);
         {
              statusLabel.Text="● STARTING…"; statusLabel.ForeColor=Color.DarkOrange;
             micBuffer=new BufferedWaveProvider(AudioFormat){DiscardOnBufferOverflow=true,ReadFully=true}; programBuffer=new BufferedWaveProvider(AudioFormat){DiscardOnBufferOverflow=true,ReadFully=true};
-            mixer=new TwoInputFloatMixer(micBuffer,programBuffer,AudioFormat); UpdateGains();
+            mixer=new TwoInputFloatMixer(micBuffer,programBuffer,AudioFormat,soundboard); UpdateGains();
             player=new WasapiPlayerBuilder().WithDevice(output.Device).WithEventSync().Build(); player.Init(mixer); player.Play();
             micRecorder=new WasapiRecorderBuilder().WithDevice(mic.Device).WithSharedMode().WithEventSync().WithBufferLength(50).WithFormat(AudioFormat).Build();
             micRecorder.DataAvailable+=MicData; micRecorder.RecordingStopped+=Stopped; micRecorder.StartRecording();
@@ -686,6 +687,8 @@ Controls.Add(root);
 
     private void StopEngine()
     {
+        soundboard.StopAll();
+        soundPlaybackEpoch++;
         engineEpoch++;
         running=false;programEnabled=false;
         try{if(programRecorder!=null){programRecorder.DataAvailable-=ProgramData;programRecorder.RecordingStopped-=Stopped;programRecorder.StopRecording();programRecorder.Dispose();}}catch{} programRecorder=null;
@@ -900,9 +903,9 @@ Controls.Add(root);
 
     private sealed class TwoInputFloatMixer:IWaveProvider
     {
-        private readonly IWaveProvider mic,program;private byte[] a=[],b=[];public float MicGain{get;set;}=1f;public float ProgramGain{get;set;}=0f;public float MasterGain{get;set;}=1f;public WaveFormat WaveFormat{get;}
-        public TwoInputFloatMixer(IWaveProvider mic,IWaveProvider program,WaveFormat format){this.mic=mic;this.program=program;WaveFormat=format;if(format.Encoding!=WaveFormatEncoding.IeeeFloat||format.BitsPerSample!=32)throw new ArgumentException("Mixer requires 32-bit float audio.");}
-        public int Read(Span<byte> dst){Ensure(dst.Length);var sa=a.AsSpan(0,dst.Length);var sb=b.AsSpan(0,dst.Length);sa.Clear();sb.Clear();mic.Read(sa);program.Read(sb);int n=dst.Length-dst.Length%4;var o=MemoryMarshal.Cast<byte,float>(dst[..n]);var ma=MemoryMarshal.Cast<byte,float>(sa[..n]);var pb=MemoryMarshal.Cast<byte,float>(sb[..n]);float mg=MicGain,pg=ProgramGain,master=MasterGain;for(int i=0;i<o.Length;i++)o[i]=Math.Clamp((ma[i]*mg+pb[i]*pg)*master,-1f,1f);if(n<dst.Length)dst[n..].Clear();return dst.Length;}
+        private readonly IWaveProvider mic,program;private readonly SoundboardBus sounds;private byte[] a=[],b=[];public float MicGain{get;set;}=1f;public float ProgramGain{get;set;}=0f;public float MasterGain{get;set;}=1f;public WaveFormat WaveFormat{get;}
+        public TwoInputFloatMixer(IWaveProvider mic,IWaveProvider program,WaveFormat format,SoundboardBus sounds){this.sounds=sounds;this.mic=mic;this.program=program;WaveFormat=format;if(format.Encoding!=WaveFormatEncoding.IeeeFloat||format.BitsPerSample!=32)throw new ArgumentException("Mixer requires 32-bit float audio.");}
+        public int Read(Span<byte> dst){Ensure(dst.Length);var sa=a.AsSpan(0,dst.Length);var sb=b.AsSpan(0,dst.Length);sa.Clear();sb.Clear();mic.Read(sa);program.Read(sb);int n=dst.Length-dst.Length%4;var o=MemoryMarshal.Cast<byte,float>(dst[..n]);var ma=MemoryMarshal.Cast<byte,float>(sa[..n]);var pb=MemoryMarshal.Cast<byte,float>(sb[..n]);float mg=MicGain,pg=ProgramGain,master=MasterGain;for(int i=0;i<o.Length;i++)o[i]=(ma[i]*mg+pb[i]*pg)*master;sounds.AddTo(o,master);for(int i=0;i<o.Length;i++)o[i]=Math.Clamp(o[i],-1f,1f);if(n<dst.Length)dst[n..].Clear();return dst.Length;}
         private void Ensure(int n){if(a.Length<n)a=new byte[n];if(b.Length<n)b=new byte[n];}
     }
 }

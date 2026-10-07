@@ -163,6 +163,8 @@ public sealed partial class MainForm
             type = "state", running, programEnabled, micMuted, assigningHotkey, busy = webBusy,
             status = statusLabel.Text, hotkey = HotkeyText(),
             assigningMicHotkey, micHotkey = micHotkeyKey == Keys.None ? "Not assigned" : micHotkeyKey.ToString(),
+            soundClips = soundboardSettings.Clips.Select(c => new { id = c.Id, name = c.Name, volume = c.Volume }).ToArray(),
+            soundVolume = soundboardSettings.Volume, soundPlaying = soundboard.Playing,
             processes = Options(processBox), microphones = Options(micBox), outputs = Options(outputBox),
             process = processBox.SelectedIndex, microphone = micBox.SelectedIndex, output = outputBox.SelectedIndex,
             programVolume = programVolume.Value, micVolume = micVolume.Value, masterVolume = masterVolume.Value
@@ -171,13 +173,32 @@ public sealed partial class MainForm
 
     private async void HandleWebCommand(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        if (closing || webBusy || e.Source != "https://programmic.local/index.html") return;
+        if (closing || e.Source != "https://programmic.local/index.html") return;
+        if (webBusy)
+        {
+            try
+            {
+                using var pending = JsonDocument.Parse(e.WebMessageAsJson);
+                if (pending.RootElement.GetProperty("command").GetString() == "soundStop")
+                {
+                    soundPlaybackEpoch++; soundboard.StopAll(); PublishWebState();
+                }
+            }
+            catch (JsonException) { }
+            return;
+        }
         try
         {
             using var doc = JsonDocument.Parse(e.WebMessageAsJson);
             var root = doc.RootElement;
             var command = root.GetProperty("command").GetString();
             webBusy = true;
+            if (command is "soundImport" or "soundPlay" or "soundStop" or "soundMaster" or "soundRename" or "soundVolume" or "soundRemove")
+            {
+                PublishWebState();
+                await HandleSoundboardCommandAsync(root, command);
+                return;
+            }
             switch (command)
             {
                 case "ready": break;

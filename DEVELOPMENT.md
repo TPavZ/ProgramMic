@@ -36,3 +36,8 @@ Next: review the layout, agree on additional v2 features, test mute and device s
 
 ## Continuous microphone routing
 Microphone-to-VB-CABLE routing starts independently of the selected application. Activate adds application audio; Deactivate only mutes that application contribution. Microphone mute remains independent. Switching application sources or losing their capture does not stop the microphone. Changing audio devices still requires restarting the device streams. Real-device listening verification remains required.
+
+## Soundboard
+The Soundboard button opens a sliding right-hand panel. Add local audio clips, rename them, adjust individual or overall soundboard volume, play clips, and Stop All. The library copies imported files into the user's AppData/ProgramMic/Soundboard folder and saves names and volumes there. Clips are limited to 50 MB and two minutes; up to eight different clips can overlap, and replaying a clip restarts it.
+
+Soundboard audio joins the same selected output as the microphone. It plays with application routing active or inactive, and microphone mute does not mute soundboard clips. FinalMix volume applies to all audio. Mixer checks cover independent routing, microphone mute, master volume, Stop All, and clipping. Listening through VB-CABLE remains an end-to-end verification step.
